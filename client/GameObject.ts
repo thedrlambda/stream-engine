@@ -1,15 +1,15 @@
 import { tile_to_world } from "./index";
-import { MyAnimation } from "./MyAnimation";
+import { AnimationThing, MyAnimation } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 import { TilePosition } from "./TilePosition";
 
 export class GameObject {
-  private animation: MyAnimation<GameObject>;
+  private animation: AnimationThing<GameObject>;
   constructor(
     private pos: TilePosition,
-    idle: MyAnimation<GameObject>,
+    idle: AnimationThing<GameObject>,
     private baselineOffset: number,
-    private action?: MyAnimation<GameObject>
+    private action?: AnimationThing<GameObject>
   ) {
     this.animation = idle;
   }

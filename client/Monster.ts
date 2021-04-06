@@ -13,23 +13,15 @@ import {
   TwoWayAnimation,
   WALK_SPEED,
 } from "./index";
-import { Left, MyAnimation, PlayOnce, StartPosition } from "./MyAnimation";
+import { FromBeginning, MyAnimation } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 import { Point2d } from "./Point2d";
 import { Persistance, Region } from "./Region";
+import { StaticAnimation } from "./StaticAnimation";
 
 function spawnBolt(x: number, y: number, left: boolean) {
   let bolt = new Entity(
-    new MyAnimation(
-      boltImage,
-      new Point2d(0, 0),
-      1,
-      1,
-      new Left(),
-      new PlayOnce(),
-      StartPosition.FromBeginning,
-      []
-    ),
+    new StaticAnimation(boltImage, new Point2d(0, 0), new FromBeginning(0)),
     x,
     y,
     (left ? -1 : 1) * WALK_SPEED * 5,

@@ -13,18 +13,18 @@ import {
   WALK_SPEED,
   worldObjects,
 } from "./index";
-import { MyAnimation } from "./MyAnimation";
+import { AnimationThing, MyAnimation } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 
 export class Character implements GameEntity {
   private velX = 0;
   private velY = 0;
   private stamina: number;
-  private maxStamina = 20;
+  private maxStamina = Infinity;
   private running = false;
   private facingRight = true;
   private takingDamage = false;
-  private animation: MyAnimation<Character>;
+  private animation: AnimationThing<Character>;
   private collisionLayer = PLAYER_LAYER;
   constructor(
     private x: number,
@@ -32,7 +32,7 @@ export class Character implements GameEntity {
     private walk: TwoWayAnimation<Character>,
     private run: TwoWayAnimation<Character>,
     private idle: TwoWayAnimation<Character>,
-    private jump: JumpingAnimations<Character>,
+    private jump: JumpingAnimations,
     private hurt: TwoWayAnimation<Character>,
     private baselineOffset: number
   ) {
@@ -40,7 +40,15 @@ export class Character implements GameEntity {
     this.stamina = this.maxStamina;
   }
   update(dt: number) {
+    // FIXME a bit too long
     if (power) this.running = true;
+
+    let topPoint =
+      map[tile_of_world(this.y - TILE_SIZE)][tile_of_world(this.x)];
+    if (topPoint !== undefined) {
+      this.y += TILE_SIZE - ((this.y - TILE_SIZE) % TILE_SIZE);
+      this.velY = 0;
+    }
 
     this.velY += GRAVITY * dt;
     let dy = this.velY * dt;

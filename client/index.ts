@@ -5,18 +5,20 @@ import { GameEntity } from "./GameEntity";
 import { GameObject } from "./GameObject";
 import { Monster } from "./Monster";
 import {
+  FromBeginning,
   Left,
-  Loop,
   MyAnimation,
   PlayOnce,
+  Random,
   Right,
-  StartPosition,
   WrapAround,
 } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 import { MyImage } from "./MyImage";
+import { Particle } from "./Particle";
 import { Point2d } from "./Point2d";
 import { Profiler } from "./Profiler";
+import { StaticAnimation } from "./StaticAnimation";
 import { StaticObject } from "./StaticObject";
 import { Tile } from "./Tile";
 import { TileMap } from "./TileMap";
@@ -80,6 +82,7 @@ let lastClick = "";
 let coinImage: TileMap;
 let gImg: HTMLCanvasElement;
 let canvasGraphics: MyGraphics;
+
 let inputMap = [
   "                                                                                                                                                                                                                                                                                                     #",
   "                                                                                                         ##############    ###                                   #                                ###      ###           #   #                 ##    #               ####                           ##",
@@ -90,6 +93,13 @@ let inputMap = [
   "########################################################################################## ############################  #################################################################################################   ####################    #################################################",
   "",
 ];
+function isGround(x: number, y: number) {
+  return (
+    inputMap[y] === undefined ||
+    inputMap[y].charAt(x) === undefined ||
+    inputMap[y].charAt(x) === "#"
+  );
+}
 
 enum Axis {
   X = 1,
@@ -106,59 +116,39 @@ export interface TwoWayAnimation<T> {
   right: MyAnimation<T>;
 }
 
-export interface JumpingAnimations<T> {
-  leftRising: MyAnimation<T>;
-  rightRising: MyAnimation<T>;
-  leftFalling: MyAnimation<T>;
-  rightFalling: MyAnimation<T>;
+export interface JumpingAnimations {
+  leftRising: StaticAnimation;
+  rightRising: StaticAnimation;
+  leftFalling: StaticAnimation;
+  rightFalling: StaticAnimation;
 }
 async function twoWayStaticAnimation<T>(
   image: string,
   facingRight: boolean
-): Promise<JumpingAnimations<T>> {
-  let rightImg = await loadImage(image);
+): Promise<JumpingAnimations> {
+  let rightImg = await MyImage.load(image);
   let rightMap = new TileMap(rightImg, 6, 1);
-  let rightRising = new MyAnimation(
+  let rightRising = new StaticAnimation(
     rightMap,
     new Point2d(3, 0),
-    1,
-    1,
-    new Right(),
-    new PlayOnce(),
-    StartPosition.FromBeginning,
-    []
+    new FromBeginning(0)
   );
-  let rightFalling = new MyAnimation(
+  let rightFalling = new StaticAnimation(
     rightMap,
     new Point2d(4, 0),
-    1,
-    1,
-    new Right(),
-    new PlayOnce(),
-    StartPosition.FromBeginning,
-    []
+    new FromBeginning(0)
   );
   let leftImg = rightImg.flipped();
   let leftMap = new TileMap(leftImg, 6, 1);
-  let leftRising = new MyAnimation(
+  let leftRising = new StaticAnimation(
     leftMap,
     new Point2d(2, 0),
-    1,
-    1,
-    new Left(),
-    new PlayOnce(),
-    StartPosition.FromBeginning,
-    []
+    new FromBeginning(0)
   );
-  let leftFalling = new MyAnimation(
+  let leftFalling = new StaticAnimation(
     leftMap,
     new Point2d(1, 0),
-    1,
-    1,
-    new Left(),
-    new PlayOnce(),
-    StartPosition.FromBeginning,
-    []
+    new FromBeginning(0)
   );
   if (!facingRight)
     [leftRising, leftFalling, rightRising, rightFalling] = [
@@ -178,16 +168,16 @@ async function twoWayAnimation<T>(
   facingRight: boolean,
   actions: { frameNumber: number; action: (_: T) => void }[]
 ): Promise<TwoWayAnimation<T>> {
-  let rightImg = await loadImage(image);
+  let rightImg = await MyImage.load(image);
   let rightMap = new TileMap(rightImg, fileLength, 1);
   let right = new MyAnimation(
     rightMap,
     new Point2d(offsetX, 0),
-    fileLength - offsetX,
-    duration,
-    new Right(),
-    new Loop(new WrapAround()),
-    StartPosition.FromBeginning,
+    new Right(
+      fileLength - offsetX,
+      new FromBeginning(duration),
+      new WrapAround()
+    ),
     actions
   );
   let leftImg = rightImg.flipped();
@@ -195,11 +185,12 @@ async function twoWayAnimation<T>(
   let left = new MyAnimation(
     leftMap,
     new Point2d(offsetX, 0),
-    fileLength - offsetX,
-    duration,
-    new Left(),
-    new Loop(new WrapAround()),
-    StartPosition.FromBeginning,
+    new Left(
+      fileLength - offsetX,
+      new FromBeginning(duration),
+      new WrapAround()
+    ),
+
     actions
   );
   if (!facingRight) [left, right] = [right, left];
@@ -217,7 +208,14 @@ async function newCharacter(x: number, y: number) {
       action: (ge: Character) => {
         coins.value--;
         entities.push(
-          new Particle(ge.getX(), ge.getY() - TILE_SIZE / 2, 0, -40, 2)
+          new Particle(
+            coinImage,
+            ge.getX(),
+            ge.getY() - TILE_SIZE / 2,
+            0,
+            -40,
+            2
+          )
         );
       },
     },
@@ -254,7 +252,6 @@ async function newMonster(x: number, y: number) {
     0,
     0.7,
     false,
-
     [
       {
         frameNumber: 3,
@@ -278,17 +275,6 @@ export function tile_to_world(x: number) {
 }
 export function tile_of_world(x: number) {
   return ~~(x / TILE_SIZE);
-}
-
-function loadImage(path: string) {
-  return new Promise<HTMLImageElement>((resolve) => {
-    let img = new Image();
-    img.onload = () => {
-      resolve(img);
-      console.log("Ready");
-    };
-    img.src = path;
-  }).then((img) => new MyImage(img, img.width, img.height));
 }
 
 function drawLayer(ctx: MyGraphics, img: MyImage, x: number) {
@@ -374,14 +360,6 @@ function draw(g: MyGraphics) {
   }
 }
 
-function isGround(x: number, y: number) {
-  return (
-    inputMap[y] === undefined ||
-    inputMap[y].charAt(x) === undefined ||
-    inputMap[y].charAt(x) === "#"
-  );
-}
-
 function update(dt: number) {
   if (coins.value < 0) {
   } else {
@@ -443,7 +421,7 @@ function collidesWith(
 }
 
 function loadObject(filename: string, signature: string[], depth: Depth) {
-  return loadImage(filename).then((img) => [
+  return MyImage.load(filename).then((img) => [
     {
       img,
       hasSpace: (map: Tile[][], x: number, y: number) =>
@@ -466,27 +444,17 @@ function loadObject(filename: string, signature: string[], depth: Depth) {
 }
 
 async function initializeWorldObjects() {
-  let chestImage = await loadImage("assets/objects/Chest.png");
+  let chestImage = await MyImage.load("assets/objects/Chest.png");
   let chestMap = new TileMap(chestImage, 4, 1);
-  let idleClosed = new MyAnimation(
+  let idleClosed = new StaticAnimation(
     chestMap,
     new Point2d(0, 0),
-    1,
-    100,
-    new Right(),
-    new PlayOnce(),
-    StartPosition.FromBeginning,
-    []
+    new FromBeginning(0)
   );
-  let idleOpen = new MyAnimation(
+  let idleOpen = new StaticAnimation(
     chestMap,
     new Point2d(3, 0),
-    1,
-    100,
-    new Right(),
-    new PlayOnce(),
-    StartPosition.FromBeginning,
-    []
+    new FromBeginning(0)
   );
 
   worldObjects["6,4"] = new GameObject(new TilePosition(6, 4), idleOpen, 3);
@@ -495,11 +463,7 @@ async function initializeWorldObjects() {
     let action = new MyAnimation(
       chestMap,
       new Point2d(1, 0),
-      3,
-      0.5,
-      new Right(),
-      new PlayOnce(),
-      StartPosition.FromBeginning,
+      new Right(3, new FromBeginning(0.5), new PlayOnce()),
       [
         {
           frameNumber: 3,
@@ -528,11 +492,7 @@ function spawnCoins(p: TilePosition) {
       new MyAnimation(
         coinImage,
         new Point2d(0, 0),
-        4,
-        0.67,
-        new Right(),
-        new Loop(new WrapAround()),
-        StartPosition.Random,
+        new Right(4, new Random(0.67), new WrapAround()),
         []
       ),
       p.x * TILE_SIZE + TILE_SIZE / 2,
@@ -639,28 +599,6 @@ function handleKeyUp(key: MappedKey) {
   keyPressed[key.key] = false;
 }
 
-class Particle implements GameEntity {
-  constructor(
-    private x: number,
-    private y: number,
-    private velX: number,
-    private velY: number,
-    private lifeTime: number
-  ) {}
-  update(dt: number) {
-    this.x += this.velX * dt;
-    this.velY += GRAVITY * dt;
-    this.y += this.velY * dt;
-    this.lifeTime -= dt;
-  }
-  draw(g: MyGraphics) {
-    coinImage.draw(g, new Point2d(0, 0), this.x, this.y);
-  }
-  isActive() {
-    return this.lifeTime > 0;
-  }
-}
-
 (async () => {
   let canvas = document.getElementById("main") as HTMLCanvasElement;
   let bounds = canvas.getBoundingClientRect();
@@ -670,11 +608,11 @@ class Particle implements GameEntity {
   gImg.height = bounds.height;
   let g = new MyGraphics(gImg, bounds.width, bounds.height);
   backgroundLayers = await Promise.all([
-    loadImage("assets/backgroundLayers/Swamp/1.png"),
-    loadImage("assets/backgroundLayers/Swamp/2.png"),
-    loadImage("assets/backgroundLayers/Swamp/3.png"),
-    loadImage("assets/backgroundLayers/Swamp/4.png"),
-    loadImage("assets/backgroundLayers/Swamp/5.png"),
+    MyImage.load("assets/backgroundLayers/Swamp/1.png"),
+    MyImage.load("assets/backgroundLayers/Swamp/2.png"),
+    MyImage.load("assets/backgroundLayers/Swamp/3.png"),
+    MyImage.load("assets/backgroundLayers/Swamp/4.png"),
+    MyImage.load("assets/backgroundLayers/Swamp/5.png"),
   ]);
   foregroundLayers = await Promise.all([]);
 
@@ -732,7 +670,7 @@ class Particle implements GameEntity {
       loadObject("assets/objects/Grass/10.png", [`.`, `#`], Depth.FOREGROUND),
     ])
   ).flat();
-  let tiles = await loadImage("assets/tiles/Tileset.png");
+  let tiles = await MyImage.load("assets/tiles/Tileset.png");
   tileMap = new TileMap(tiles, 10, 10);
 
   for (let y = 0; y < inputMap.length; y++) {
@@ -766,9 +704,9 @@ class Particle implements GameEntity {
 
   await initializeWorldObjects();
 
-  coinImage = new TileMap(await loadImage("assets/objects/Coin.png"), 4, 1);
+  coinImage = new TileMap(await MyImage.load("assets/objects/Coin.png"), 4, 1);
   boltImage = new TileMap(
-    await loadImage("assets/sprites/BigBloated/Bolt.png"),
+    await MyImage.load("assets/sprites/BigBloated/Bolt.png"),
     1,
     1
   );

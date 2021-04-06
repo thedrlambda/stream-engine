@@ -1,15 +1,15 @@
 import { CollidingThingy } from "./CollidingThingy";
 import { GameEntity } from "./GameEntity";
 import { char, coins, GRAVITY, map, tile_of_world } from "./index";
-import { MyAnimation } from "./MyAnimation";
+import { AnimationThing } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 
 export class Entity implements CollidingThingy, GameEntity {
-  private animation: MyAnimation<Entity>;
+  private animation: AnimationThing<Entity>;
   private active = true;
   private onGround = false;
   constructor(
-    idle: MyAnimation<Entity>,
+    idle: AnimationThing<Entity>,
     private x: number,
     private y: number,
     private velX: number,
