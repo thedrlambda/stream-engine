@@ -241,8 +241,8 @@ async function newMonster(x: number, y: number) {
   let attack = await twoWayAnimation(MONSTER_ATTACK, 4, 0, 0.7, false, [
     {
       frameNumber: 2,
-      action: (m: Monster) => {
-        m.damage();
+      action: (m: Monster) => { 
+        m.spawnDamageRegion();
       },
     },
     {

@@ -5,20 +5,14 @@ import {
   char,
   colliders,
   entities,
-  map,
   MONSTER_LAYER,
   PLAYER_LAYER,
-  tile_of_world,
+  tile_is_solid,
   TILE_SIZE,
   TwoWayAnimation,
   WALK_SPEED,
 } from "./index";
-import {
-  FromBeginning,
-  MyAnimation,
-  RegularTicker,
-  StillTicker,
-} from "./MyAnimation";
+import { FromBeginning, MyAnimation, StillTicker } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 import { Point2d } from "./Point2d";
 import { Persistance, Region } from "./Region";
@@ -62,9 +56,9 @@ export class Monster implements GameEntity {
   }
   update(dt: number) {
     if (Math.abs(char.getX() - this.x) < 1.5 * TILE_SIZE) {
-      this.startAttacking();
+      this.attacking = true;
     } else if (Math.abs(char.getX() - this.x) < 3 * TILE_SIZE) {
-      this.startThrowing();
+      this.throwing = true;
     } else if (this.attacking) {
     } else if (this.throwing) {
     } else {
@@ -76,18 +70,20 @@ export class Monster implements GameEntity {
       let dy = this.velY * dt;
       this.y += dy;
 
-      let leftPoint =
-        map[tile_of_world(this.y - TILE_SIZE / 2)][
-          tile_of_world(this.x - TILE_SIZE / 4)
-        ];
-      let rightPoint =
-        map[tile_of_world(this.y - TILE_SIZE / 2)][
-          tile_of_world(this.x + TILE_SIZE / 4)
-        ];
+      let leftPoint = tile_is_solid(
+        this.x - TILE_SIZE / 4,
+        this.y - TILE_SIZE / 2
+      );
+      let rightPoint = tile_is_solid(
+        this.x + TILE_SIZE / 4,
+        this.y - TILE_SIZE / 2
+      );
       if (leftPoint !== undefined) {
-        this.x -= dx;
+        this.x += TILE_SIZE - ((this.x - TILE_SIZE / 4) % TILE_SIZE);
+        this.velX = 0;
       } else if (rightPoint !== undefined) {
-        this.x -= dx;
+        this.x -= (this.x + TILE_SIZE / 4) % TILE_SIZE;
+        this.velX = 0;
       }
     }
 
@@ -134,20 +130,13 @@ export class Monster implements GameEntity {
   isActive() {
     return true;
   }
-  // TEMP
-  startAttacking() {
-    this.attacking = true;
-  }
   stopAttacking() {
     this.attacking = false;
-  }
-  startThrowing() {
-    this.throwing = true;
   }
   stopThrowing() {
     this.throwing = false;
   }
-  damage() {
+  spawnDamageRegion() {
     colliders.push(
       new Region(
         (this.facingRight ? 1 : -1) * 38 + this.x,

@@ -13,7 +13,7 @@ import {
   WALK_SPEED,
   worldObjects,
 } from "./index";
-import { AnimationThing, MyAnimation } from "./MyAnimation";
+import { AnimationThing } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 
 export class Character implements GameEntity {
