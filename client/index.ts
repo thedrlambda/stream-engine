@@ -10,7 +10,9 @@ import {
   MyAnimation,
   PlayOnce,
   Random,
+  RegularTicker,
   Right,
+  StillTicker,
   WrapAround,
 } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
@@ -18,7 +20,6 @@ import { MyImage } from "./MyImage";
 import { Particle } from "./Particle";
 import { Point2d } from "./Point2d";
 import { Profiler } from "./Profiler";
-import { StaticAnimation } from "./StaticAnimation";
 import { StaticObject } from "./StaticObject";
 import { Tile } from "./Tile";
 import { TileMap } from "./TileMap";
@@ -116,39 +117,39 @@ export interface TwoWayAnimation<T> {
   right: MyAnimation<T>;
 }
 
-export interface JumpingAnimations {
-  leftRising: StaticAnimation;
-  rightRising: StaticAnimation;
-  leftFalling: StaticAnimation;
-  rightFalling: StaticAnimation;
+export interface JumpingAnimations<T> {
+  leftRising: MyAnimation<T>;
+  rightRising: MyAnimation<T>;
+  leftFalling: MyAnimation<T>;
+  rightFalling: MyAnimation<T>;
 }
 async function twoWayStaticAnimation<T>(
   image: string,
   facingRight: boolean
-): Promise<JumpingAnimations> {
+): Promise<JumpingAnimations<T>> {
   let rightImg = await MyImage.load(image);
   let rightMap = new TileMap(rightImg, 6, 1);
-  let rightRising = new StaticAnimation(
+  let rightRising = new MyAnimation(
     rightMap,
     new Point2d(3, 0),
-    new FromBeginning(0)
+    new StillTicker(new FromBeginning())
   );
-  let rightFalling = new StaticAnimation(
+  let rightFalling = new MyAnimation(
     rightMap,
     new Point2d(4, 0),
-    new FromBeginning(0)
+    new StillTicker(new FromBeginning())
   );
   let leftImg = rightImg.flipped();
   let leftMap = new TileMap(leftImg, 6, 1);
-  let leftRising = new StaticAnimation(
+  let leftRising = new MyAnimation(
     leftMap,
     new Point2d(2, 0),
-    new FromBeginning(0)
+    new StillTicker(new FromBeginning())
   );
-  let leftFalling = new StaticAnimation(
+  let leftFalling = new MyAnimation(
     leftMap,
     new Point2d(1, 0),
-    new FromBeginning(0)
+    new StillTicker(new FromBeginning())
   );
   if (!facingRight)
     [leftRising, leftFalling, rightRising, rightFalling] = [
@@ -173,25 +174,30 @@ async function twoWayAnimation<T>(
   let right = new MyAnimation(
     rightMap,
     new Point2d(offsetX, 0),
-    new Right(
-      fileLength - offsetX,
-      new FromBeginning(duration),
-      new WrapAround()
-    ),
-    actions
+    new RegularTicker(
+      new Right(
+        duration,
+        fileLength - offsetX,
+        new FromBeginning(),
+        new WrapAround(),
+        actions
+      )
+    )
   );
   let leftImg = rightImg.flipped();
   let leftMap = new TileMap(leftImg, fileLength, 1);
   let left = new MyAnimation(
     leftMap,
     new Point2d(offsetX, 0),
-    new Left(
-      fileLength - offsetX,
-      new FromBeginning(duration),
-      new WrapAround()
-    ),
-
-    actions
+    new RegularTicker(
+      new Left(
+        duration,
+        fileLength - offsetX,
+        new FromBeginning(),
+        new WrapAround(),
+        actions
+      )
+    )
   );
   if (!facingRight) [left, right] = [right, left];
   return { left, right };
@@ -275,6 +281,13 @@ export function tile_to_world(x: number) {
 }
 export function tile_of_world(x: number) {
   return ~~(x / TILE_SIZE);
+}
+export function tile_is_solid(x: number, y: number) {
+  let xTile = tile_of_world(x);
+  let yTile = tile_of_world(y);
+  if (yTile >= map.length || 0 > yTile) return undefined;
+  if (xTile >= map[yTile].length || 0 > xTile) return undefined;
+  return map[yTile][xTile];
 }
 
 function drawLayer(ctx: MyGraphics, img: MyImage, x: number) {
@@ -446,15 +459,15 @@ function loadObject(filename: string, signature: string[], depth: Depth) {
 async function initializeWorldObjects() {
   let chestImage = await MyImage.load("assets/objects/Chest.png");
   let chestMap = new TileMap(chestImage, 4, 1);
-  let idleClosed = new StaticAnimation(
+  let idleClosed = new MyAnimation(
     chestMap,
     new Point2d(0, 0),
-    new FromBeginning(0)
+    new StillTicker(new FromBeginning())
   );
-  let idleOpen = new StaticAnimation(
+  let idleOpen = new MyAnimation(
     chestMap,
     new Point2d(3, 0),
-    new FromBeginning(0)
+    new StillTicker(new FromBeginning())
   );
 
   worldObjects["6,4"] = new GameObject(new TilePosition(6, 4), idleOpen, 3);
@@ -463,13 +476,14 @@ async function initializeWorldObjects() {
     let action = new MyAnimation(
       chestMap,
       new Point2d(1, 0),
-      new Right(3, new FromBeginning(0.5), new PlayOnce()),
-      [
-        {
-          frameNumber: 3,
-          action: (g: GameObject) => spawnCoins(g.getPosition()),
-        },
-      ]
+      new RegularTicker(
+        new Right(0.5, 3, new FromBeginning(), new PlayOnce(), [
+          {
+            frameNumber: 3,
+            action: (g: GameObject) => spawnCoins(g.getPosition()),
+          },
+        ])
+      )
     );
 
     let x =
@@ -492,8 +506,9 @@ function spawnCoins(p: TilePosition) {
       new MyAnimation(
         coinImage,
         new Point2d(0, 0),
-        new Right(4, new Random(0.67), new WrapAround()),
-        []
+        new RegularTicker(
+          new Right(0.67, 4, new Random(), new WrapAround(), [])
+        )
       ),
       p.x * TILE_SIZE + TILE_SIZE / 2,
       (p.y + 1) * TILE_SIZE,

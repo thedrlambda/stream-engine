@@ -4,9 +4,9 @@ import {
   GRAVITY,
   JumpingAnimations,
   keyPressed,
-  map,
   PLAYER_LAYER,
   power,
+  tile_is_solid,
   tile_of_world,
   TILE_SIZE,
   TwoWayAnimation,
@@ -32,7 +32,7 @@ export class Character implements GameEntity {
     private walk: TwoWayAnimation<Character>,
     private run: TwoWayAnimation<Character>,
     private idle: TwoWayAnimation<Character>,
-    private jump: JumpingAnimations,
+    private jump: JumpingAnimations<Character>,
     private hurt: TwoWayAnimation<Character>,
     private baselineOffset: number
   ) {
@@ -43,8 +43,7 @@ export class Character implements GameEntity {
     // FIXME a bit too long
     if (power) this.running = true;
 
-    let topPoint =
-      map[tile_of_world(this.y - TILE_SIZE)][tile_of_world(this.x)];
+    let topPoint = tile_is_solid(this.x, this.y - TILE_SIZE);
     if (topPoint !== undefined) {
       this.y += TILE_SIZE - ((this.y - TILE_SIZE) % TILE_SIZE);
       this.velY = 0;
@@ -53,7 +52,7 @@ export class Character implements GameEntity {
     this.velY += GRAVITY * dt;
     let dy = this.velY * dt;
     this.y += dy;
-    let basePoint = map[tile_of_world(this.y)][tile_of_world(this.x)];
+    let basePoint = tile_is_solid(this.x, this.y);
     if (basePoint !== undefined) {
       this.y -= this.y % TILE_SIZE;
       let desiredJump =
@@ -96,18 +95,20 @@ export class Character implements GameEntity {
     let dx = this.velX * dt;
     this.x += dx;
 
-    let leftPoint =
-      map[tile_of_world(this.y - TILE_SIZE / 2)][
-        tile_of_world(this.x - TILE_SIZE / 4)
-      ];
-    let rightPoint =
-      map[tile_of_world(this.y - TILE_SIZE / 2)][
-        tile_of_world(this.x + TILE_SIZE / 4)
-      ];
+    let leftPoint = tile_is_solid(
+      this.x - TILE_SIZE / 4,
+      this.y - TILE_SIZE / 2
+    );
+    let rightPoint = tile_is_solid(
+      this.x + TILE_SIZE / 4,
+      this.y - TILE_SIZE / 2
+    );
     if (leftPoint !== undefined) {
-      this.x -= dx;
+      this.x += TILE_SIZE - ((this.x - TILE_SIZE / 4) % TILE_SIZE);
+      this.velX = 0;
     } else if (rightPoint !== undefined) {
-      this.x -= dx;
+      this.x -= (this.x + TILE_SIZE / 4) % TILE_SIZE;
+      this.velX = 0;
     }
 
     colliders.forEach((e) => {

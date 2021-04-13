@@ -14,56 +14,65 @@ export interface AnimationThing<T> {
   reset(): void;
 }
 
-interface LoopingDir {
+interface LoopingDir<T> {
   handleWrapAround(): number;
-  oppositeDirection(): Dir;
-  still(): Dir;
+  oppositeDirection(): Dir<T>;
+  still(): Ticker<T>;
 }
 
-interface Dir {
+interface Dir<T> {
   asNumber(): number;
-  triggerActions<T>(
-    self: T,
-    frameAction: AnimationActions<T>[],
-    cursor: number
-  ): void;
-  handleDone(cursor: number, self: LoopBehaviorHandler): void;
   reset(): number;
   initialCursor(): number;
   toSwitch(rate: number): number;
   tickRate(): number;
+  tick(
+    self: T,
+    cursor: number,
+    ticker: DirHandler<T>,
+    ani: TickerHandler<T>
+  ): number;
 }
 
-interface SuperDir extends Dir, LoopingDir {}
+interface SuperDir<T> extends Dir<T>, LoopingDir<T> {}
 
-export class Left implements SuperDir {
+export class Left<T> implements SuperDir<T> {
   constructor(
+    private duration: number,
     private len: number,
     private start: StartPosition,
-    private shouldLoop: LoopBehavior
+    private shouldLoop: LoopBehavior,
+    private frameActions: AnimationActions<T>[]
   ) {}
   oppositeDirection() {
-    return new Right(this.len, this.start, this.shouldLoop);
+    return new Right(
+      this.duration,
+      this.len,
+      this.start,
+      this.shouldLoop,
+      this.frameActions
+    );
   }
   asNumber() {
     return -1;
   }
-  triggerActions<T>(
-    self: T,
-    frameAction: AnimationActions<T>[],
-    cursor: number
-  ) {
-    frameAction
+  triggerActions(self: T, cursor: number) {
+    this.frameActions
       .filter((x) => x.frameNumber + 1 === this.len - cursor)
       .forEach((x) => x.action(self));
   }
   still() {
-    return new Still(this.start);
+    return new StillTicker(this.start);
   }
-  handleDone(cursor: number, self: LoopBehaviorHandler) {
+  handleDone(
+    cursor: number,
+    self: DirHandler<T>,
+    ani: TickerHandler<T>
+  ): number {
     if (cursor < 0 || cursor >= this.len) {
-      this.shouldLoop.handle(self, this);
+      return this.shouldLoop.handle(self, this, ani);
     }
+    return 0;
   }
   reset() {
     return ((1 - this.asNumber()) / 2) * (this.len - 1);
@@ -72,67 +81,58 @@ export class Left implements SuperDir {
     return -this.asNumber() * this.len;
   }
   initialCursor(): number {
-    return this.start.dynamic(this, this.len);
+    return this.start.dynamic(this.asNumber(), this.len);
   }
   toSwitch(rate: number) {
     return this.start.toSwitch(rate);
   }
   tickRate() {
-    return this.start.tickRate(this.len);
+    return this.duration / this.len;
+  }
+  tick(self: T, cursor: number, ticker: DirHandler<T>, ani: TickerHandler<T>) {
+    cursor += this.asNumber();
+    this.triggerActions(self, cursor);
+    cursor += this.handleDone(cursor, ticker, ani);
+    return cursor;
   }
 }
-export class Still implements Dir {
-  constructor(private start: StartPosition) {}
-  asNumber() {
-    return 0;
-  }
-  triggerActions<T>(
-    self: T,
-    frameAction: AnimationActions<T>[],
-    cursor: number
-  ) {}
-  handleDone(cursor: number, self: LoopBehaviorHandler) {}
-  reset() {
-    return 0;
-  }
-  initialCursor() {
-    return this.start.dynamic(this, 1);
-  }
-  toSwitch(rate: number) {
-    return this.start.toSwitch(rate);
-  }
-  tickRate() {
-    return this.start.tickRate(1);
-  }
-}
-export class Right implements SuperDir {
+export class Right<T> implements SuperDir<T> {
   constructor(
+    private duration: number,
     private len: number,
     private start: StartPosition,
-    private shouldLoop: LoopBehavior
+    private shouldLoop: LoopBehavior,
+    private frameActions: AnimationActions<T>[]
   ) {}
   oppositeDirection() {
-    return new Left(this.len, this.start, this.shouldLoop);
+    return new Left(
+      this.duration,
+      this.len,
+      this.start,
+      this.shouldLoop,
+      this.frameActions
+    );
   }
   asNumber() {
     return 1;
   }
-  triggerActions<T>(
-    self: T,
-    frameAction: AnimationActions<T>[],
-    cursor: number
-  ) {
-    frameAction
+  triggerActions(self: T, cursor: number) {
+    this.frameActions
       .filter((x) => x.frameNumber === cursor)
       .forEach((x) => x.action(self));
   }
   still() {
-    return new Still(this.start);
+    return new StillTicker(this.start);
   }
-  handleDone(cursor: number, self: LoopBehaviorHandler) {
+  handleDone(
+    cursor: number,
+    self: DirHandler<T>,
+    ani: TickerHandler<T>
+  ): number {
     if (cursor < 0 || cursor >= this.len) {
-      this.shouldLoop.handle(self, this);
+      return this.shouldLoop.handle(self, this, ani);
     }
+    return 0;
   }
   reset() {
     return ((1 - this.asNumber()) / 2) * (this.len - 1);
@@ -140,102 +140,157 @@ export class Right implements SuperDir {
   handleWrapAround() {
     return -this.asNumber() * this.len;
   }
-  initialCursor() {
-    return this.start.dynamic(this, this.len);
+  initialCursor(): number {
+    return this.start.dynamic(this.asNumber(), this.len);
   }
   toSwitch(rate: number) {
     return this.start.toSwitch(rate);
   }
   tickRate() {
-    return this.start.tickRate(this.len);
+    return this.duration / this.len;
+  }
+  tick(self: T, cursor: number, ticker: DirHandler<T>, ani: TickerHandler<T>) {
+    cursor += this.asNumber();
+    this.triggerActions(self, cursor);
+    cursor += this.handleDone(cursor, ticker, ani);
+    return cursor;
   }
 }
 
 interface LoopBehavior {
-  handle(handler: LoopBehaviorHandler, dir: SuperDir): void;
+  handle<T>(
+    dirHandler: DirHandler<T>,
+    dir: SuperDir<T>,
+    tickerHandler: TickerHandler<T>
+  ): number;
 }
 export class WrapAround implements LoopBehavior {
-  handle(handler: LoopBehaviorHandler, dir: SuperDir) {
-    handler.setDirAndCursor(dir, dir.handleWrapAround());
+  handle<T>(
+    dirHandler: DirHandler<T>,
+    dir: SuperDir<T>,
+    tickerHandler: TickerHandler<T>
+  ) {
+    dirHandler.setDir(dir);
+    return dir.handleWrapAround();
   }
 }
 export class BackAndForth implements LoopBehavior {
-  handle(handler: LoopBehaviorHandler, dir: SuperDir) {
-    handler.setDirAndCursor(dir.oppositeDirection(), dir.asNumber() * 2);
+  handle<T>(
+    dirHandler: DirHandler<T>,
+    dir: SuperDir<T>,
+    tickerHandler: TickerHandler<T>
+  ) {
+    dirHandler.setDir(dir.oppositeDirection());
+    return dir.asNumber() * 2;
   }
 }
 export class PlayOnce implements LoopBehavior {
-  handle(handler: LoopBehaviorHandler, dir: SuperDir) {
-    handler.setDirAndCursor(dir.still(), -dir.asNumber());
+  handle<T>(
+    dirHandler: DirHandler<T>,
+    dir: SuperDir<T>,
+    tickerHandler: TickerHandler<T>
+  ) {
+    tickerHandler.setTicker(dir.still());
+    return -dir.asNumber();
   }
 }
 
 export interface StartPosition {
   forStatic(len: number): number;
-  dynamic(dir: Dir, len: number): number;
+  dynamic(dirNumber: number, len: number): number;
   toSwitch(rate: number): number;
-  tickRate(len: number): number;
 }
 export class FromBeginning implements StartPosition {
-  constructor(private duration: number) {}
+  constructor() {}
   forStatic() {
     return 0;
   }
-  dynamic(dir: Dir, len: number) {
-    return ((1 - dir.asNumber()) / 2) * (len - 1);
+  dynamic(dirNumber: number, len: number) {
+    return ((1 - dirNumber) / 2) * (len - 1);
   }
   toSwitch(rate: number) {
     return rate;
   }
-  tickRate(len: number) {
-    return this.duration / len;
-  }
 }
 export class Random implements StartPosition {
-  constructor(private duration: number) {}
+  constructor() {}
   forStatic(len: number) {
     return ~~(Math.random() * len);
   }
-  dynamic(dir: Dir, len: number) {
+  dynamic(dirNumber: number, len: number) {
     return ~~(Math.random() * len);
   }
   toSwitch(rate: number) {
     return rate * Math.random();
   }
-  tickRate(len: number) {
-    return this.duration / len;
-  }
 }
 
-interface LoopBehaviorHandler {
-  setDirAndCursor(newDir: Dir, cursorOffset: number): void;
+interface DirHandler<T> {
+  setDir(newDir: Dir<T>): void;
 }
 
-export class MyAnimation<T> implements AnimationThing<T>, LoopBehaviorHandler {
+interface TickerHandler<T> {
+  setTicker(newTicker: Ticker<T>): void;
+}
+
+interface Ticker<T> {
+  initialCursor(): number;
+  update(dt: number, self: T, cursor: number, ani: TickerHandler<T>): number;
+  reset(): number;
+}
+export class RegularTicker<T> implements Ticker<T>, DirHandler<T> {
   private tickRate: number;
   private toSwitch: number;
-
-  private cursor: number;
-  private dir: Dir;
-  constructor(
-    private map: TileMap,
-    private t: Point2d,
-    private initialDir: Dir,
-    private frameActions: AnimationActions<T>[]
-  ) {
+  private dir: Dir<T>;
+  constructor(private initialDir: Dir<T>) {
     this.dir = this.initialDir;
-    this.cursor = this.dir.initialCursor();
     this.tickRate = this.dir.tickRate();
     this.toSwitch = this.dir.toSwitch(this.tickRate);
   }
-  update(dt: number, self: T) {
+  initialCursor() {
+    return this.dir.initialCursor();
+  }
+  update(dt: number, self: T, cursor: number, ani: TickerHandler<T>) {
     this.toSwitch -= dt;
     while (this.toSwitch < 0) {
-      this.cursor += this.dir.asNumber();
-      this.dir.triggerActions(self, this.frameActions, this.cursor);
-      this.dir.handleDone(this.cursor, this);
+      cursor = this.dir.tick(self, cursor, this, ani);
       this.toSwitch += this.tickRate;
     }
+    return cursor;
+  }
+  reset() {
+    this.dir = this.initialDir;
+    this.toSwitch = this.tickRate;
+    return this.dir.reset();
+  }
+  setDir(newDir: Dir<T>) {
+    this.dir = newDir;
+  }
+}
+export class StillTicker<T> implements Ticker<T> {
+  constructor(private start: StartPosition) {}
+  initialCursor() {
+    return this.start.dynamic(0, 1);
+  }
+  update(dt: number, self: T, cursor: number, ani: TickerHandler<T>) {
+    return cursor;
+  }
+  reset() {
+    return 0;
+  }
+}
+
+export class MyAnimation<T> implements AnimationThing<T>, TickerHandler<T> {
+  private cursor: number;
+  constructor(
+    private map: TileMap,
+    private t: Point2d,
+    private ticker: Ticker<T>
+  ) {
+    this.cursor = this.ticker.initialCursor();
+  }
+  update(dt: number, self: T) {
+    this.cursor = this.ticker.update(dt, self, this.cursor, this);
   }
   draw(ctx: MyGraphics, x: number, y: number) {
     this.map.draw(ctx, new Point2d(this.t.x + this.cursor, this.t.y), x, y);
@@ -249,12 +304,9 @@ export class MyAnimation<T> implements AnimationThing<T>, LoopBehaviorHandler {
     );
   }
   reset() {
-    this.dir = this.initialDir;
-    this.cursor = this.dir.reset();
-    this.toSwitch = this.tickRate;
+    this.cursor = this.ticker.reset();
   }
-  setDirAndCursor(newDir: Dir, cursorOffset: number) {
-    this.dir = newDir;
-    this.cursor += cursorOffset;
+  setTicker(newTicker: Ticker<T>) {
+    this.ticker = newTicker;
   }
 }
