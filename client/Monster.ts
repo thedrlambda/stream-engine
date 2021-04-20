@@ -7,7 +7,7 @@ import {
   entities,
   MONSTER_LAYER,
   PLAYER_LAYER,
-  tile_is_solid,
+  point_is_solid,
   TILE_SIZE,
   TwoWayAnimation,
   WALK_SPEED,
@@ -70,11 +70,11 @@ export class Monster implements GameEntity {
       let dy = this.velY * dt;
       this.y += dy;
 
-      let leftPoint = tile_is_solid(
+      let leftPoint = point_is_solid(
         this.x - TILE_SIZE / 4,
         this.y - TILE_SIZE / 2
       );
-      let rightPoint = tile_is_solid(
+      let rightPoint = point_is_solid(
         this.x + TILE_SIZE / 4,
         this.y - TILE_SIZE / 2
       );

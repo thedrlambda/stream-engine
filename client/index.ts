@@ -27,6 +27,7 @@ import { TilePosition } from "./TilePosition";
 export const PLAYER_LAYER = 1 << 0;
 export const MONSTER_LAYER = 1 << 1;
 
+export const CHUNK_SIZE = 20;
 export const GRAVITY = 200;
 export const WALK_SPEED = 35;
 export const TILE_SIZE = 32;
@@ -51,7 +52,6 @@ const KEY_CONFIG: { [key: string]: string } = {
   s: "ArrowDown",
 };
 
-export let map: Tile[][] = [];
 export let worldObjects: { [pos: string]: GameObject } = {};
 export let char: Character;
 export let entities: GameEntity[] = [];
@@ -67,7 +67,7 @@ export let keyPressed: { [key: string]: boolean } = {};
 
 let fluffConfiguration: {
   img: MyImage;
-  hasSpace: (_: Tile[][], x: number, y: number) => boolean;
+  hasSpace: (_: boolean[][], x: number, y: number) => boolean;
   foreground?: boolean;
 }[];
 let backgroundFluff: StaticObject[] = [];
@@ -84,21 +84,15 @@ let coinImage: TileMap;
 let gImg: HTMLCanvasElement;
 let canvasGraphics: MyGraphics;
 
-let inputMap = [
-  "                                                                                                                                                                                                                                                                                                     #",
-  "                                                                                                         ##############    ###                                   #                                ###      ###           #   #                 ##    #               ####                           ##",
-  "       #   #######                                #         #                                                                                                                                                           ##   ##               ###    ##                                            ###",
-  "                                        #         #         #                                     ###                            #         ##               #    #    #           #           #             ##         ###   ###             ####    ###        #              ####               ####",
-  "                             #          #         #         #                                                                                                                                                         ####   ####           #####    ####       #                                #####",
-  "########################################################################################## ############################  #################################################################################################   ####################    #################################################",
-  "########################################################################################## ############################  #################################################################################################   ####################    #################################################",
-  "",
-];
-function isGround(x: number, y: number) {
+let chunk: Tile[][][] = [];
+let chunkX = 0;
+let chunkY = 0;
+
+function isGround(groundMap: boolean[][], x: number, y: number) {
   return (
-    inputMap[y] === undefined ||
-    inputMap[y].charAt(x) === undefined ||
-    inputMap[y].charAt(x) === "#"
+    groundMap[y] !== undefined &&
+    groundMap[y][x] !== undefined &&
+    groundMap[y][x]
   );
 }
 
@@ -241,7 +235,7 @@ async function newMonster(x: number, y: number) {
   let attack = await twoWayAnimation(MONSTER_ATTACK, 4, 0, 0.7, false, [
     {
       frameNumber: 2,
-      action: (m: Monster) => { 
+      action: (m: Monster) => {
         m.spawnDamageRegion();
       },
     },
@@ -280,14 +274,20 @@ export function tile_to_world(x: number) {
   return x * TILE_SIZE;
 }
 export function tile_of_world(x: number) {
-  return ~~(x / TILE_SIZE);
+  return Math.floor(x / TILE_SIZE);
 }
-export function tile_is_solid(x: number, y: number) {
-  let xTile = tile_of_world(x);
-  let yTile = tile_of_world(y);
-  if (yTile >= map.length || 0 > yTile) return undefined;
-  if (xTile >= map[yTile].length || 0 > xTile) return undefined;
-  return map[yTile][xTile];
+export function point_is_solid(x: number, y: number) {
+  return tile_is_solid(tile_of_world(x), tile_of_world(y));
+}
+export function tile_is_solid(xTile: number, yTile: number) {
+  xTile -= chunkX;
+  let cx = Math.floor(xTile / CHUNK_SIZE);
+  xTile -= cx * CHUNK_SIZE;
+  yTile -= chunkY;
+  if (cx >= chunk.length || 0 > cx || yTile >= chunk[cx].length || 0 > yTile)
+    return undefined;
+  if (xTile >= chunk[cx][yTile].length || 0 > xTile) return undefined;
+  return chunk[cx][yTile][xTile];
 }
 
 function drawLayer(ctx: MyGraphics, img: MyImage, x: number) {
@@ -314,11 +314,12 @@ function drawBackgroundFluff(g: MyGraphics) {
 
 function drawMap(g: MyGraphics) {
   profile.tick("Draw.Map");
-  let startX = Math.max(g.getLeftmostTile(), 0);
-  let endX = Math.min(g.getRightmostTile(), map[0].length);
-  for (let y = 0; y < map.length; y++)
-    for (let x = startX; x < endX; x++)
-      map[y][x]?.draw(g, tile_to_world(x), tile_to_world(y));
+  let startX = g.getLeftmostTile();
+  let endX = g.getRightmostTile();
+  for (let y = 0; y < chunk[0].length; y++)
+    for (let x = startX; x < endX; x++) {
+      tile_is_solid(x, y)?.draw(g, tile_to_world(x), tile_to_world(y));
+    }
 }
 
 function drawForeground(g: MyGraphics) {
@@ -384,7 +385,9 @@ function update(dt: number) {
     });
     entities = entities.filter((k) => k.isActive());
     colliders = colliders.filter((k) => k.isActive());
-    px = char.getX();
+    px = tile_of_world(char.getX());
+    if (px - chunkX < CHUNK_SIZE) chunkSwapLeft();
+    else if (px - chunkX >= 2 * CHUNK_SIZE) chunkSwapRight();
   }
 }
 
@@ -409,7 +412,7 @@ function loop(g: MyGraphics) {
 
 function collidesWith(
   signature: string[],
-  map: Tile[][],
+  map: boolean[][],
   x: number,
   y: number
 ) {
@@ -419,13 +422,12 @@ function collidesWith(
       if (signature[signature.length - 1 - dy].charAt(dx) === "?") continue;
       if (
         signature[signature.length - 1 - dy].charAt(dx) === "." &&
-        map[y - dy] !== undefined &&
-        map[y - dy][x - mid + dx] !== undefined
+        isGround(map, x - mid + dx, y - dy)
       )
         return false;
       if (
         signature[signature.length - 1 - dy].charAt(dx) === "#" &&
-        (map[y - dy] === undefined || map[y - dy][x - mid + dx] === undefined)
+        !isGround(map, x - mid + dx, y - dy)
       )
         return false;
     }
@@ -437,13 +439,13 @@ function loadObject(filename: string, signature: string[], depth: Depth) {
   return MyImage.load(filename).then((img) => [
     {
       img,
-      hasSpace: (map: Tile[][], x: number, y: number) =>
+      hasSpace: (map: boolean[][], x: number, y: number) =>
         Math.random() < 0.1 && collidesWith(signature, map, x, y),
       foreground: depth === Depth.FOREGROUND,
     },
     {
       img: img.flipped(),
-      hasSpace: (map: Tile[][], x: number, y: number) =>
+      hasSpace: (map: boolean[][], x: number, y: number) =>
         Math.random() < 0.1 &&
         collidesWith(
           signature.map((x) => x.split("").reverse().join("")),
@@ -471,7 +473,7 @@ async function initializeWorldObjects() {
   );
 
   worldObjects["6,4"] = new GameObject(new TilePosition(6, 4), idleOpen, 3);
-
+  /*
   for (let i = 0; i < MONSTERS; i++) {
     let action = new MyAnimation(
       chestMap,
@@ -497,6 +499,7 @@ async function initializeWorldObjects() {
       action
     );
   }
+  */
 }
 
 function spawnCoins(p: TilePosition) {
@@ -522,7 +525,12 @@ function spawnCoins(p: TilePosition) {
   }
 }
 
-function handleInterior(x: number, y: number, t: Point2d) {
+function handleInterior(
+  groundMap: boolean[][],
+  x: number,
+  y: number,
+  t: Point2d
+) {
   // All faces
   if (t.x === 0 || t.y === 0) {
     return t;
@@ -530,40 +538,46 @@ function handleInterior(x: number, y: number, t: Point2d) {
 
   // No faces
   if (t.x >= 3 && t.y >= 3) {
-    return t.plus(calculateDiagonalMask(x, y));
+    return t.plus(calculateDiagonalMask(groundMap, x, y));
   }
 
   // Some faces
   if (t.x < 3 && t.y < 3) {
     let dx = t.x === 1 ? 1 : -1;
     let dy = t.y === 1 ? 1 : -1;
-    if (!isGround(x + dx, y + dy)) {
+    if (!isGround(groundMap, x + dx, y + dy)) {
       return posOfBend(dx, dy);
     } else {
       return t;
     }
   } else if (t.x < 3) {
-    return new Point2d(t.x, t.y + maskOfSurface(x, y, t.x, Axis.X));
+    return new Point2d(t.x, t.y + maskOfSurface(groundMap, x, y, t.x, Axis.X));
   } /* if (t.y < 3) */ else {
-    return new Point2d(t.x + maskOfSurface(x, y, t.y, Axis.Y), t.y);
+    return new Point2d(t.x + maskOfSurface(groundMap, x, y, t.y, Axis.Y), t.y);
   }
 }
 
-function calculateMask(x: number, y: number, a: Axis, dy: number) {
+function calculateMask(
+  groundMap: boolean[][],
+  x: number,
+  y: number,
+  a: Axis,
+  dy: number
+) {
   let mask = 0;
-  if (isGround(x + a, y + (1 - a) + dy) === (dy === 0)) mask |= 1;
-  if (isGround(x - a, y - (1 - a) + dy) === (dy === 0)) mask |= 2;
+  if (isGround(groundMap, x + a, y + (1 - a) + dy) === (dy === 0)) mask |= 1;
+  if (isGround(groundMap, x - a, y - (1 - a) + dy) === (dy === 0)) mask |= 2;
   return mask;
 }
 
-function calculateDiagonalMask(x: number, y: number) {
-  let mx = calculateMask(x, y, 1, 1);
-  let my = calculateMask(x, y, 1, -1);
+function calculateDiagonalMask(groundMap: boolean[][], x: number, y: number) {
+  let mx = calculateMask(groundMap, x, y, 1, 1);
+  let my = calculateMask(groundMap, x, y, 1, -1);
   return new Point2d(mx, my);
 }
-function calculateOrthogonalMask(x: number, y: number) {
-  let mx = calculateMask(x, y, Axis.X, 0);
-  let my = calculateMask(x, y, Axis.Y, 0);
+function calculateOrthogonalMask(groundMap: boolean[][], x: number, y: number) {
+  let mx = calculateMask(groundMap, x, y, Axis.X, 0);
+  let my = calculateMask(groundMap, x, y, Axis.Y, 0);
   return new Point2d(mx, my);
 }
 
@@ -572,11 +586,19 @@ function posOfBend(dx: number, dy: number) {
   return dx === dy ? new Point2d(g, 0) : new Point2d(0, g);
 }
 
-function maskOfSurface(x: number, y: number, t: number, a: Axis) {
+function maskOfSurface(
+  groundMap: boolean[][],
+  x: number,
+  y: number,
+  t: number,
+  a: Axis
+) {
   let emptyMask = 0;
   let d = t === 1 ? 1 : -1;
-  if (!isGround(x + a * d + (1 - a), y + (1 - a) * d + a)) emptyMask |= 1;
-  if (!isGround(x + a * d - (1 - a), y + (1 - a) * d - a)) emptyMask |= 2;
+  if (!isGround(groundMap, x + a * d + (1 - a), y + (1 - a) * d + a))
+    emptyMask |= 1;
+  if (!isGround(groundMap, x + a * d - (1 - a), y + (1 - a) * d - a))
+    emptyMask |= 2;
   return emptyMask;
 }
 
@@ -612,6 +634,149 @@ window.addEventListener("keyup", (e) => {
 });
 function handleKeyUp(key: MappedKey) {
   keyPressed[key.key] = false;
+}
+
+function clamp(v: number, min: number, max: number) {
+  if (v < min) return min;
+  if (v > max) return max;
+  return v;
+}
+
+function findRightHeight() {
+  for (let x = CHUNK_SIZE - 1; x >= 0; x--) {
+    for (let y = 0; y < 8; y++) {
+      if (chunk[1][y][x] !== undefined) return y;
+    }
+  }
+  return 4;
+}
+function findLeftHeight() {
+  for (let x = 0; x < CHUNK_SIZE; x++) {
+    for (let y = 0; y < 8; y++) {
+      if (chunk[1][y][x] !== undefined) return y;
+    }
+  }
+  return 4;
+}
+
+function chunkSwapRight() {
+  chunk[0] = chunk[1];
+  chunk[1] = chunk[2];
+  chunkX += CHUNK_SIZE;
+  generateChunkRight(2, findRightHeight()); // FIXME: specialize method
+  // TODO: Remove fluff
+}
+function chunkSwapLeft() {
+  chunk[2] = chunk[1];
+  chunk[1] = chunk[0];
+  chunkX -= CHUNK_SIZE;
+  generateChunkLeft(0, findLeftHeight()); // FIXME: specialize method
+  // TODO: Remove fluff
+}
+
+// FIXME: unify methods
+function generateChunkRight(c: number, h: number) {
+  let groundMap: boolean[][] = [];
+  for (let y = 0; y < 8; y++) {
+    groundMap.push([]);
+  }
+  for (let x = 0; x < CHUNK_SIZE; x++) {
+    for (let y = h; y < groundMap.length; y++) {
+      groundMap[y][x] = true;
+    }
+    h = clamp(h + ~~((Math.random() - Math.random()) * 3), 0, 7);
+  }
+
+  chunk[c] = [];
+  for (let y = 0; y < groundMap.length; y++) {
+    chunk[c][y] = [];
+    for (let x = 0; x < groundMap[y].length; x++) {
+      if (!isGround(groundMap, x, y)) continue;
+      let t = handleInterior(
+        groundMap,
+        x,
+        y,
+        calculateOrthogonalMask(groundMap, x, y)
+      );
+      chunk[c][y][x] = new Tile(tileMap, t);
+    }
+  }
+
+  // TODO prevent places same object twice in a row (or within X things)
+  for (let y = 0; y < groundMap.length; y++) {
+    for (let x = 0; x < groundMap[y].length; x++) {
+      if (!isGround(groundMap, x, y)) continue;
+      // Find a tree that is happy
+      let candidates = fluffConfiguration.filter((tree) =>
+        tree.hasSpace(groundMap, x, y)
+      );
+      if (candidates.length === 0) continue;
+      let tree = candidates[~~(Math.random() * candidates.length)];
+      if (tree !== undefined) {
+        if (tree.foreground) {
+          foregroundFluff.push(
+            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
+          );
+        } else {
+          backgroundFluff.push(
+            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
+          );
+        }
+      }
+    }
+  }
+}
+
+function generateChunkLeft(c: number, h: number) {
+  let groundMap: boolean[][] = [];
+  for (let y = 0; y < 8; y++) {
+    groundMap.push([]);
+  }
+  for (let x = CHUNK_SIZE - 1; x >= 0; x--) {
+    for (let y = h; y < groundMap.length; y++) {
+      groundMap[y][x] = true;
+    }
+    h = clamp(h + ~~((Math.random() - Math.random()) * 3), 0, 7);
+  }
+
+  chunk[c] = [];
+  for (let y = 0; y < groundMap.length; y++) {
+    chunk[c][y] = [];
+    for (let x = 0; x < groundMap[y].length; x++) {
+      if (!isGround(groundMap, x, y)) continue;
+      let t = handleInterior(
+        groundMap,
+        x,
+        y,
+        calculateOrthogonalMask(groundMap, x, y)
+      );
+      chunk[c][y][x] = new Tile(tileMap, t);
+    }
+  }
+
+  // TODO prevent places same object twice in a row (or within X things)
+  for (let y = 0; y < groundMap.length; y++) {
+    for (let x = 0; x < groundMap[y].length; x++) {
+      if (!isGround(groundMap, x, y)) continue;
+      // Find a tree that is happy
+      let candidates = fluffConfiguration.filter((tree) =>
+        tree.hasSpace(groundMap, x, y)
+      );
+      if (candidates.length === 0) continue;
+      let tree = candidates[~~(Math.random() * candidates.length)];
+      if (tree !== undefined) {
+        if (tree.foreground) {
+          foregroundFluff.push(
+            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
+          );
+        } else {
+          backgroundFluff.push(
+            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
+          );
+        }
+      }
+    }
+  }
 }
 
 (async () => {
@@ -688,34 +853,11 @@ function handleKeyUp(key: MappedKey) {
   let tiles = await MyImage.load("assets/tiles/Tileset.png");
   tileMap = new TileMap(tiles, 10, 10);
 
-  for (let y = 0; y < inputMap.length; y++) {
-    map.push([]);
-    for (let x = 0; x < inputMap[y].length; x++) {
-      if (!isGround(x, y)) continue;
-      let t = handleInterior(x, y, calculateOrthogonalMask(x, y));
-      map[y][x] = new Tile(tileMap, t);
-    }
+  let h = 4;
+  for (let c = 0; c < 3; c++) {
+    generateChunkRight(c, h);
   }
   Math.seedrandom(5);
-  // TODO prevent places same object twice in a row (or within X things)
-  for (let y = 0; y < inputMap.length; y++) {
-    for (let x = 0; x < inputMap[y].length; x++) {
-      if (!isGround(x, y)) continue;
-      // Find a tree that is happy
-      let candidates = fluffConfiguration.filter((tree) =>
-        tree.hasSpace(map, x, y)
-      );
-      if (candidates.length === 0) continue;
-      let tree = candidates[~~(Math.random() * candidates.length)];
-      if (tree !== undefined) {
-        if (tree.foreground) {
-          foregroundFluff.push(new StaticObject(tree.img, x, y));
-        } else {
-          backgroundFluff.push(new StaticObject(tree.img, x, y));
-        }
-      }
-    }
-  }
 
   await initializeWorldObjects();
 
@@ -726,6 +868,7 @@ function handleKeyUp(key: MappedKey) {
     1
   );
 
+  /*
   for (let i = 0; i < MONSTERS; i++) {
     let monster = await newMonster(
       ~~((Math.random() * map[0].length) / MONSTERS) +
@@ -735,8 +878,9 @@ function handleKeyUp(key: MappedKey) {
     );
     entities.push(monster);
   }
+  */
 
-  char = await newCharacter(4 * TILE_SIZE + 16, 5 * TILE_SIZE);
+  char = await newCharacter(1.5 * CHUNK_SIZE * TILE_SIZE + 16, 0 * TILE_SIZE);
   entities.push(char);
 
   loop(g);

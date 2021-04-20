@@ -1,6 +1,6 @@
 import { CollidingThingy } from "./CollidingThingy";
 import { GameEntity } from "./GameEntity";
-import { char, coins, GRAVITY, map, tile_of_world } from "./index";
+import { char, coins, GRAVITY, point_is_solid } from "./index";
 import { AnimationThing } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 
@@ -27,7 +27,7 @@ export class Entity implements CollidingThingy, GameEntity {
     let dy = this.velY * dt;
     this.y += dy;
 
-    let basePoint = map[tile_of_world(this.y)][tile_of_world(this.x)];
+    let basePoint = point_is_solid(this.x, this.y);
     if (basePoint !== undefined) {
       if (this.coin) {
         this.y -= dy;

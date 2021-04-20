@@ -6,7 +6,7 @@ import {
   keyPressed,
   PLAYER_LAYER,
   power,
-  tile_is_solid,
+  point_is_solid,
   tile_of_world,
   TILE_SIZE,
   TwoWayAnimation,
@@ -43,7 +43,7 @@ export class Character implements GameEntity {
     // FIXME a bit too long
     if (power) this.running = true;
 
-    let topPoint = tile_is_solid(this.x, this.y - TILE_SIZE);
+    let topPoint = point_is_solid(this.x, this.y - TILE_SIZE);
     if (topPoint !== undefined) {
       this.y += TILE_SIZE - ((this.y - TILE_SIZE) % TILE_SIZE);
       this.velY = 0;
@@ -52,7 +52,7 @@ export class Character implements GameEntity {
     this.velY += GRAVITY * dt;
     let dy = this.velY * dt;
     this.y += dy;
-    let basePoint = tile_is_solid(this.x, this.y);
+    let basePoint = point_is_solid(this.x, this.y);
     if (basePoint !== undefined) {
       this.y -= this.y % TILE_SIZE;
       let desiredJump =
@@ -95,19 +95,22 @@ export class Character implements GameEntity {
     let dx = this.velX * dt;
     this.x += dx;
 
-    let leftPoint = tile_is_solid(
+    let leftPoint = point_is_solid(
       this.x - TILE_SIZE / 4,
       this.y - TILE_SIZE / 2
     );
-    let rightPoint = tile_is_solid(
+    let rightPoint = point_is_solid(
       this.x + TILE_SIZE / 4,
       this.y - TILE_SIZE / 2
     );
     if (leftPoint !== undefined) {
-      this.x += TILE_SIZE - ((this.x - TILE_SIZE / 4) % TILE_SIZE);
+      this.x +=
+        TILE_SIZE -
+        ((((this.x - TILE_SIZE / 4) % TILE_SIZE) + TILE_SIZE) % TILE_SIZE);
       this.velX = 0;
     } else if (rightPoint !== undefined) {
-      this.x -= (this.x + TILE_SIZE / 4) % TILE_SIZE;
+      this.x -=
+        (((this.x + TILE_SIZE / 4) % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
       this.velX = 0;
     }
 

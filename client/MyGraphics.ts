@@ -137,9 +137,9 @@ export class MyGraphics {
     this.offsetY = 0;
   }
   getLeftmostTile() {
-    return ~~(this.offsetX / TILE_SIZE);
+    return Math.floor(this.offsetX / TILE_SIZE);
   }
   getRightmostTile() {
-    return ~~((this.offsetX + this.width / this.zoom) / TILE_SIZE) + 1;
+    return Math.floor((this.offsetX + this.width / this.zoom) / TILE_SIZE) + 1;
   }
 }
