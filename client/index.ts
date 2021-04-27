@@ -641,9 +641,9 @@ function loop(g: MyGraphics) {
   let dt = (before - (lastBefore || before)) / 1000;
   lastBefore = before;
   profile.tick("Update");
-  while (dt > SLEEP) {
-    game.update(SLEEP);
-    dt -= SLEEP;
+  while (dt > SLEEP / 1000) {
+    game.update(SLEEP / 1000);
+    dt -= SLEEP / 1000;
   }
   game.update(dt);
   profile.tick("Draw");
