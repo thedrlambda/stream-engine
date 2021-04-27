@@ -108,10 +108,12 @@ export class Character implements GameEntity {
         TILE_SIZE -
         ((((this.x - TILE_SIZE / 4) % TILE_SIZE) + TILE_SIZE) % TILE_SIZE);
       this.velX = 0;
+      this.running = false;
     } else if (rightPoint !== undefined) {
       this.x -=
         (((this.x + TILE_SIZE / 4) % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
       this.velX = 0;
+      this.running = false;
     }
 
     colliders.forEach((e) => {
@@ -157,15 +159,18 @@ export class Character implements GameEntity {
       this.x + (this.facingRight ? 1 : -1) * this.baselineOffset,
       this.y
     );
-    ctx.setColor("rgb(200,200,200,0.5)");
-    ctx.fillRect(
-      this.x - TILE_SIZE / 2,
-      this.y,
-      (this.stamina / this.maxStamina) * TILE_SIZE,
-      6
-    );
-    ctx.setColor("rgb(255, 255, 255,1)");
-    ctx.drawRect(this.x - TILE_SIZE / 2, this.y, TILE_SIZE, 6);
+    // Draw stamina
+    if (Number.isFinite(this.maxStamina)) {
+      ctx.setColor("rgb(200,200,200,0.5)");
+      ctx.fillRect(
+        this.x - TILE_SIZE / 2,
+        this.y,
+        (this.stamina / this.maxStamina) * TILE_SIZE,
+        6
+      );
+      ctx.setColor("rgb(255, 255, 255,1)");
+      ctx.drawRect(this.x - TILE_SIZE / 2, this.y, TILE_SIZE, 6);
+    }
   }
   act() {
     worldObjects[

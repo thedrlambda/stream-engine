@@ -70,8 +70,8 @@ let fluffConfiguration: {
   hasSpace: (_: boolean[][], x: number, y: number) => boolean;
   foreground?: boolean;
 }[];
-let backgroundFluff: StaticObject[] = [];
-let foregroundFluff: StaticObject[] = [];
+let backgroundFluff: StaticObject[][] = [];
+let foregroundFluff: StaticObject[][] = [];
 let px = 0;
 let backgroundLayers: MyImage[];
 let foregroundLayers: MyImage[];
@@ -309,7 +309,8 @@ function drawBackground(g: MyGraphics) {
 
 function drawBackgroundFluff(g: MyGraphics) {
   profile.tick("Draw.BackgroundFluff");
-  backgroundFluff.forEach((x) => x.draw(g));
+  for(let c = 0; c < 3; c++)
+  backgroundFluff[c].forEach((x) => x.draw(g));
 }
 
 function drawMap(g: MyGraphics) {
@@ -345,7 +346,8 @@ function drawEntities(g: MyGraphics) {
 
 function drawForegroundFluff(g: MyGraphics) {
   profile.tick("Draw.ForegroundFluff");
-  foregroundFluff.forEach((x) => x.draw(g));
+  for(let c = 0; c < 3; c++)
+  foregroundFluff[c].forEach((x) => x.draw(g));
 }
 
 function draw(g: MyGraphics) {
@@ -659,124 +661,104 @@ function findLeftHeight() {
   return 4;
 }
 
+function slideChunk(from: number, to: number){
+  chunk[to] = chunk[from];
+  foregroundFluff[to] = foregroundFluff[from];
+  backgroundFluff[to] = backgroundFluff[from];
+}
+
 function chunkSwapRight() {
-  chunk[0] = chunk[1];
-  chunk[1] = chunk[2];
+  slideChunk(1, 0);
+  slideChunk(2, 1);
   chunkX += CHUNK_SIZE;
   generateChunkRight(2, findRightHeight()); // FIXME: specialize method
-  // TODO: Remove fluff
 }
 function chunkSwapLeft() {
-  chunk[2] = chunk[1];
-  chunk[1] = chunk[0];
+  slideChunk(1, 2);
+  slideChunk(0, 1);
   chunkX -= CHUNK_SIZE;
   generateChunkLeft(0, findLeftHeight()); // FIXME: specialize method
-  // TODO: Remove fluff
 }
 
-// FIXME: unify methods
+function iterate(start: number, end: number, f: (x: number) => void) {
+  let step = Math.sign(end - start);
+  for (let x = start; x !== end; x += step) {
+    f(x);
+  }
+}
+
+function generateGroundMap(start: number, end: number, h: number) {
+  let groundMap: boolean[][] = [];
+  for (let y = 0; y < 8; y++) {
+    groundMap.push([]);
+  }
+  iterate(start, end, (x) => {
+    for (let y = h; y < groundMap.length; y++) {
+      groundMap[y][x] = true;
+    }
+    h = clamp(h + ~~((Math.random() - Math.random()) * 3), 0, 7);
+  });
+  return { groundMap, newH: h };
+}
+
+function fillChunk(groundMap: boolean[][], c: number) {
+  chunk[c] = [];
+  for (let y = 0; y < groundMap.length; y++) {
+    chunk[c][y] = [];
+    for (let x = 0; x < groundMap[y].length; x++) {
+      if (!isGround(groundMap, x, y)) continue;
+      let t = handleInterior(
+        groundMap,
+        x,
+        y,
+        calculateOrthogonalMask(groundMap, x, y)
+      );
+      chunk[c][y][x] = new Tile(tileMap, t);
+    }
+  }
+}
+
+function placeFluff(groundMap: boolean[][], c: number) {
+  // TODO prevent places same object twice in a row (or within X things)
+  backgroundFluff[c] = [];
+  foregroundFluff[c] = [];
+  for (let y = 0; y < groundMap.length; y++) {
+    for (let x = 0; x < groundMap[y].length; x++) {
+      if (!isGround(groundMap, x, y)) continue;
+      // Find a tree that is happy
+      let candidates = fluffConfiguration.filter((tree) =>
+        tree.hasSpace(groundMap, x, y)
+      );
+      if (candidates.length === 0) continue;
+      let tree = candidates[~~(Math.random() * candidates.length)];
+      if (tree !== undefined) {
+        if (tree.foreground) {
+          foregroundFluff[c].push(
+            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
+          );
+        } else {
+          backgroundFluff[c].push(
+            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
+          );
+        }
+      }
+    }
+  }
+}
+
+function generateChunk(start: number, end: number, c: number, h: number) {
+  let { groundMap, newH } = generateGroundMap(start, end, h);
+  fillChunk(groundMap, c);
+  placeFluff(groundMap, c);
+  // Place monster
+  // Place chest
+  return newH;
+}
 function generateChunkRight(c: number, h: number) {
-  let groundMap: boolean[][] = [];
-  for (let y = 0; y < 8; y++) {
-    groundMap.push([]);
-  }
-  for (let x = 0; x < CHUNK_SIZE; x++) {
-    for (let y = h; y < groundMap.length; y++) {
-      groundMap[y][x] = true;
-    }
-    h = clamp(h + ~~((Math.random() - Math.random()) * 3), 0, 7);
-  }
-
-  chunk[c] = [];
-  for (let y = 0; y < groundMap.length; y++) {
-    chunk[c][y] = [];
-    for (let x = 0; x < groundMap[y].length; x++) {
-      if (!isGround(groundMap, x, y)) continue;
-      let t = handleInterior(
-        groundMap,
-        x,
-        y,
-        calculateOrthogonalMask(groundMap, x, y)
-      );
-      chunk[c][y][x] = new Tile(tileMap, t);
-    }
-  }
-
-  // TODO prevent places same object twice in a row (or within X things)
-  for (let y = 0; y < groundMap.length; y++) {
-    for (let x = 0; x < groundMap[y].length; x++) {
-      if (!isGround(groundMap, x, y)) continue;
-      // Find a tree that is happy
-      let candidates = fluffConfiguration.filter((tree) =>
-        tree.hasSpace(groundMap, x, y)
-      );
-      if (candidates.length === 0) continue;
-      let tree = candidates[~~(Math.random() * candidates.length)];
-      if (tree !== undefined) {
-        if (tree.foreground) {
-          foregroundFluff.push(
-            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
-          );
-        } else {
-          backgroundFluff.push(
-            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
-          );
-        }
-      }
-    }
-  }
+  return generateChunk(0, CHUNK_SIZE, c, h);
 }
-
 function generateChunkLeft(c: number, h: number) {
-  let groundMap: boolean[][] = [];
-  for (let y = 0; y < 8; y++) {
-    groundMap.push([]);
-  }
-  for (let x = CHUNK_SIZE - 1; x >= 0; x--) {
-    for (let y = h; y < groundMap.length; y++) {
-      groundMap[y][x] = true;
-    }
-    h = clamp(h + ~~((Math.random() - Math.random()) * 3), 0, 7);
-  }
-
-  chunk[c] = [];
-  for (let y = 0; y < groundMap.length; y++) {
-    chunk[c][y] = [];
-    for (let x = 0; x < groundMap[y].length; x++) {
-      if (!isGround(groundMap, x, y)) continue;
-      let t = handleInterior(
-        groundMap,
-        x,
-        y,
-        calculateOrthogonalMask(groundMap, x, y)
-      );
-      chunk[c][y][x] = new Tile(tileMap, t);
-    }
-  }
-
-  // TODO prevent places same object twice in a row (or within X things)
-  for (let y = 0; y < groundMap.length; y++) {
-    for (let x = 0; x < groundMap[y].length; x++) {
-      if (!isGround(groundMap, x, y)) continue;
-      // Find a tree that is happy
-      let candidates = fluffConfiguration.filter((tree) =>
-        tree.hasSpace(groundMap, x, y)
-      );
-      if (candidates.length === 0) continue;
-      let tree = candidates[~~(Math.random() * candidates.length)];
-      if (tree !== undefined) {
-        if (tree.foreground) {
-          foregroundFluff.push(
-            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
-          );
-        } else {
-          backgroundFluff.push(
-            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
-          );
-        }
-      }
-    }
-  }
+  return generateChunk(CHUNK_SIZE - 1, -1, c, h);
 }
 
 (async () => {
@@ -855,7 +837,7 @@ function generateChunkLeft(c: number, h: number) {
 
   let h = 4;
   for (let c = 0; c < 3; c++) {
-    generateChunkRight(c, h);
+    h = generateChunkRight(c, h);
   }
   Math.seedrandom(5);
 
