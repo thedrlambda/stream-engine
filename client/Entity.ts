@@ -1,6 +1,6 @@
 import { CollidingThingy } from "./CollidingThingy";
 import { GameEntity } from "./GameEntity";
-import { char, coins, GRAVITY, point_is_solid } from "./index";
+import { char, coins, GRAVITY, point_is_solid, TILE_SIZE } from "./index";
 import { AnimationThing } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 
@@ -15,7 +15,7 @@ export class Entity implements CollidingThingy, GameEntity {
     private velX: number,
     private velY: number,
     private collisionLayer: number,
-    private coin: boolean
+    private coin: boolean // FIXME: Replace type code with classes
   ) {
     this.animation = idle;
   }
@@ -23,6 +23,34 @@ export class Entity implements CollidingThingy, GameEntity {
     if (Math.abs(this.velX) < 2) this.velX = 0;
     let dx = this.velX * dt;
     this.x += dx;
+
+    let leftPoint = point_is_solid(
+      this.x - TILE_SIZE / 8,
+      this.y - TILE_SIZE / 8
+    );
+    let rightPoint = point_is_solid(
+      this.x + TILE_SIZE / 8,
+      this.y - TILE_SIZE / 8
+    );
+    if (leftPoint !== undefined) {
+      if (this.coin) {
+        this.x +=
+          TILE_SIZE -
+          ((((this.x - TILE_SIZE / 8) % TILE_SIZE) + TILE_SIZE) % TILE_SIZE);
+        this.velX = 0;
+      } else {
+        this.active = false;
+      }
+    } else if (rightPoint !== undefined) {
+      if (this.coin) {
+        this.x -=
+          (((this.x + TILE_SIZE / 8) % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
+        this.velX = 0;
+      } else {
+        this.active = false;
+      }
+    }
+
     this.velY += GRAVITY * dt;
     let dy = this.velY * dt;
     this.y += dy;

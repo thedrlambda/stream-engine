@@ -142,4 +142,11 @@ export class MyGraphics {
   getRightmostTile() {
     return Math.floor((this.offsetX + this.width / this.zoom) / TILE_SIZE) + 1;
   }
+  getVerticalCenter() {
+    return this.width / this.zoom / 2;
+  }
+  // FIXME: Eliminate getter
+  getZoom() {
+    return this.zoom;
+  }
 }

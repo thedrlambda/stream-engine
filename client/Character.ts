@@ -173,9 +173,11 @@ export class Character implements GameEntity {
     }
   }
   act() {
-    worldObjects[
-      `${tile_of_world(this.x)},${tile_of_world(this.y - 5)}`
-    ]?.activate();
+    let tx = tile_of_world(this.x);
+    let ty = tile_of_world(this.y - 5);
+    worldObjects[1]
+      .find((w) => w.getPosition().x === tx && w.getPosition().y === ty)
+      ?.activate();
   }
   setCamera(g: MyGraphics) {
     g.setTranslate(this.x, this.y - 2 * TILE_SIZE);

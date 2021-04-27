@@ -5,6 +5,7 @@ import {
   char,
   colliders,
   entities,
+  GRAVITY,
   MONSTER_LAYER,
   PLAYER_LAYER,
   point_is_solid,
@@ -55,6 +56,15 @@ export class Monster implements GameEntity {
     this.animation = idle.right;
   }
   update(dt: number) {
+    this.velY += GRAVITY * dt;
+    let dy = this.velY * dt;
+    this.y += dy;
+    let basePoint = point_is_solid(this.x, this.y);
+    if (basePoint !== undefined) {
+      this.y -= this.y % TILE_SIZE;
+      this.velY = 0;
+    }
+
     if (Math.abs(char.getX() - this.x) < 1.5 * TILE_SIZE) {
       this.attacking = true;
     } else if (Math.abs(char.getX() - this.x) < 3 * TILE_SIZE) {
@@ -62,29 +72,32 @@ export class Monster implements GameEntity {
     } else if (this.attacking) {
     } else if (this.throwing) {
     } else {
-      let dist = char.getX() - this.x;
-      if (Math.abs(dist) > 300) this.velX = 0;
-      else this.velX = Math.sign(dist) * 1.3 * WALK_SPEED;
+      if (this.velY === 0) {
+        let dist = char.getX() - this.x;
+        if (Math.abs(dist) > 300) this.velX = 0;
+        else this.velX = Math.sign(dist) * 1.3 * WALK_SPEED;
+      }
       let dx = this.velX * dt;
       this.x += dx;
-      let dy = this.velY * dt;
-      this.y += dy;
+    }
 
-      let leftPoint = point_is_solid(
-        this.x - TILE_SIZE / 4,
-        this.y - TILE_SIZE / 2
-      );
-      let rightPoint = point_is_solid(
-        this.x + TILE_SIZE / 4,
-        this.y - TILE_SIZE / 2
-      );
-      if (leftPoint !== undefined) {
-        this.x += TILE_SIZE - ((this.x - TILE_SIZE / 4) % TILE_SIZE);
-        this.velX = 0;
-      } else if (rightPoint !== undefined) {
-        this.x -= (this.x + TILE_SIZE / 4) % TILE_SIZE;
-        this.velX = 0;
-      }
+    let leftPoint = point_is_solid(
+      this.x - TILE_SIZE / 4,
+      this.y - TILE_SIZE / 2
+    );
+    let rightPoint = point_is_solid(
+      this.x + TILE_SIZE / 4,
+      this.y - TILE_SIZE / 2
+    );
+    if (leftPoint !== undefined) {
+      this.x +=
+        TILE_SIZE -
+        ((((this.x - TILE_SIZE / 4) % TILE_SIZE) + TILE_SIZE) % TILE_SIZE);
+      this.velX = 0;
+    } else if (rightPoint !== undefined) {
+      this.x -=
+        (((this.x + TILE_SIZE / 4) % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
+      this.velX = 0;
     }
 
     colliders.forEach((e) => {
