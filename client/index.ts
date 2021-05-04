@@ -3,6 +3,7 @@ import { CollidingThingy } from "./CollidingThingy";
 import { Entity } from "./Entity";
 import { GameEntity } from "./GameEntity";
 import { GameObject } from "./GameObject";
+import { JumpCharacter } from "./JumpCharacter";
 import { Monster } from "./Monster";
 import {
   FromBeginning,
@@ -33,11 +34,14 @@ export const WALK_SPEED = 35;
 export const TILE_SIZE = 32;
 export const FPS = 30;
 export const SLEEP = 1000 / FPS;
-const CHAR_RUN = "assets/sprites/GraveRobber/GraveRobber_run.png";
+const JUMP_CHAR_RUN = "assets/sprites/SteamMan/SteamMan_run.png";
+const JUMP_CHAR_IDLE = "assets/sprites/SteamMan/SteamMan_idle.png";
+const JUMP_CHAR_JUMP = "assets/sprites/SteamMan/SteamMan_jump.png";
 const CHAR_WALK = "assets/sprites/GraveRobber/GraveRobber_walk.png";
+const CHAR_RUN = "assets/sprites/GraveRobber/GraveRobber_run.png";
 const CHAR_IDLE = "assets/sprites/GraveRobber/GraveRobber_idle.png";
-const CHAR_HURT = "assets/sprites/GraveRobber/GraveRobber_hurt.png";
 const CHAR_JUMP = "assets/sprites/GraveRobber/GraveRobber_jump.png";
+const CHAR_HURT = "assets/sprites/GraveRobber/GraveRobber_hurt.png";
 const MONSTER_WALK = "assets/sprites/BigBloated/Big_bloated_walk.png";
 const MONSTER_IDLE = "assets/sprites/BigBloated/Big_bloated_idle.png";
 const MONSTER_THROW_ATTACK =
@@ -101,6 +105,8 @@ interface Game {
   handleMouseUp(): void;
   handleMouseDown(): void;
   handleMouseMove(x: number, y: number): void;
+  handleKeyDown(key: string): void;
+  handleKeyUp(key: string): void;
   draw(g: MyGraphics): void;
   update(dt: number): void;
 }
@@ -185,7 +191,7 @@ class Menu implements Game {
         100,
         20,
         async () => {
-          console.log("Other game");
+          game = await JumpGuy.initialize();
         }
       ),
     ]);
@@ -204,6 +210,8 @@ class Menu implements Game {
   handleMouseMove(x: number, y: number) {
     this.mouse.handleMouseMove(x, y);
   }
+  handleKeyUp(key: string) {}
+  handleKeyDown(key: string) {}
 }
 class MoneyHealth implements Game {
   private constructor() {}
@@ -354,7 +362,7 @@ class MoneyHealth implements Game {
         worldObjects[c].forEach((w) => w.update(dt));
       }
       entities.forEach((k) => {
-        k.update(dt);
+        k.update(dt, mapCollider);
       });
       entities = entities.filter((k) => k.isActive());
       colliders = colliders.filter((k) => k.isActive());
@@ -366,6 +374,220 @@ class MoneyHealth implements Game {
   handleMouseUp() {}
   handleMouseDown() {}
   handleMouseMove(x: number, y: number) {}
+  handleKeyDown(key: string) {
+    let thisClickTime = Date.now();
+    power = lastClick === key && thisClickTime - lastClickTime < 200;
+    lastClickTime = thisClickTime;
+    lastClick = key;
+
+    if (key === "ArrowDown") {
+      char.act();
+    }
+  }
+  handleKeyUp(key: string) {}
+}
+const JUMP_WORLD = [
+  [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+  ],
+  [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ],
+  [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+  ],
+  [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ],
+  [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+  ],
+  [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ],
+  [false, false, false, false, false, false, false, false, false, false, false],
+  [false, false, false, false, false, false, true, false, false, false, false],
+  [false, false, false, false, false, false, false, false, false, false, false],
+  [false, false, false, false, false, false, false, false, false, false, true],
+  [false, false, false, false, false, false, false, false, false, false, false],
+  [true, false, false, false, false, false, false, false, true, false, false],
+  [true, false, false, false, false, false, false, false, false, false, false],
+  [true, false, false, false, false, false, false, false, false, false, false],
+  [true, false, false, false, false, false, true, false, false, false, false],
+  [true, false, false, false, false, false, false, false, false, false, false],
+  [true, false, false, false, false, false, false, false, false, false, true],
+  [true, false, false, false, false, false, false, false, false, false, false],
+  [true, false, false, false, false, false, false, false, true, false, false],
+  [true, false, false, false, false, false, false, false, false, false, false],
+  [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+  ],
+];
+
+class JumpGuy implements Game {
+  private map: Tile[][];
+  private mapCollider: JumpGameMapCollider;
+  private constructor(private player: JumpCharacter) {
+    this.map = [];
+    for (let y = 0; y < JUMP_WORLD.length; y++) {
+      this.map.push([]);
+      for (let x = 0; x < JUMP_WORLD[y].length; x++) {
+        if (!JUMP_WORLD[y][x]) continue;
+        let t = handleInterior(
+          JUMP_WORLD,
+          x,
+          y,
+          calculateOrthogonalMask(JUMP_WORLD, x, y)
+        );
+        this.map[y][x] = new Tile(tileMap, t);
+      }
+    }
+    this.mapCollider = new JumpGameMapCollider(this.map);
+  }
+  static async initialize() {
+    char_run_img = await MyImage.load(JUMP_CHAR_RUN);
+    char_idle_img = await MyImage.load(JUMP_CHAR_IDLE);
+    char_jump_img = await MyImage.load(JUMP_CHAR_JUMP);
+
+    let tiles = await MyImage.load("assets/tiles/Tileset.png");
+    tileMap = new TileMap(tiles, 10, 10);
+
+    let run = twoWayAnimation(char_run_img, 6, 0, 1, true, []);
+    let idle = twoWayAnimation(char_idle_img, 4, 0, 1.2, true, []);
+    let jump = twoWayStaticAnimation(char_jump_img, true);
+
+    let player = new JumpCharacter(
+      tile_to_world(2),
+      tile_to_world(JUMP_WORLD.length - 1),
+      run,
+      idle,
+      jump,
+      8
+    );
+
+    return new JumpGuy(player);
+  }
+  draw(g: MyGraphics) {
+    canvasGraphics.clear();
+    this.player.setCamera(canvasGraphics);
+    let c = Math.floor(
+      255 - 230 * (this.player.getY() / (TILE_SIZE * this.map.length))
+    );
+    canvasGraphics.setBackgroundColor(`rgb(${c}, ${c}, ${c})`);
+    // draw map
+    for (let y = 0; y < this.map.length; y++) {
+      for (let x = 0; x < this.map[y].length; x++) {
+        this.map[y][x]?.draw(
+          canvasGraphics,
+          tile_to_world(x),
+          tile_to_world(y)
+        );
+      }
+    }
+    this.player.draw(canvasGraphics);
+  }
+
+  update(dt: number) {
+    this.player.update(dt, this.mapCollider);
+  }
+  handleMouseUp() {}
+  handleMouseDown() {}
+  handleMouseMove(x: number, y: number) {}
+  handleKeyUp(key: string) {
+    if (key === "ArrowUp") {
+      this.player.reqJump((Date.now() - upStart) / 1000);
+    }
+  }
+  handleKeyDown(key: string) {
+    if (key === "ArrowUp") {
+      upStart = Date.now();
+    }
+  }
 }
 
 let game: Game;
@@ -564,9 +786,24 @@ export function tile_to_world(x: number) {
 export function tile_of_world(x: number) {
   return Math.floor(x / TILE_SIZE);
 }
-export function point_is_solid(x: number, y: number) {
-  return tile_is_solid(tile_of_world(x), tile_of_world(y));
+export class MapCollider {
+  point_is_solid(x: number, y: number) {
+    return tile_is_solid(tile_of_world(x), tile_of_world(y));
+  }
 }
+let mapCollider = new MapCollider();
+export class JumpGameMapCollider {
+  constructor(private map: Tile[][]) {}
+  point_is_solid(x: number, y: number) {
+    return this.tile_is_solid(tile_of_world(x), tile_of_world(y));
+  }
+  tile_is_solid(xTile: number, yTile: number) {
+    if (yTile >= this.map.length || 0 > yTile) return undefined;
+    if (xTile >= this.map[yTile].length || 0 > xTile) return undefined;
+    return this.map[yTile][xTile];
+  }
+}
+
 export function tile_is_solid(xTile: number, yTile: number) {
   xTile -= chunkX;
   let cx = Math.floor(xTile / CHUNK_SIZE);
@@ -817,21 +1054,15 @@ class MappedKey {
   }
 }
 
+let upStart = 0;
 function handleKeyDown(key: MappedKey) {
   if (keyPressed[key.key]) return;
   keyPressed[key.key] = true;
-
-  let thisClickTime = Date.now();
-  power = lastClick === key.key && thisClickTime - lastClickTime < 200;
-  lastClickTime = thisClickTime;
-  lastClick = key.key;
-
-  if (key.key === "ArrowDown") {
-    char.act();
-  }
+  game.handleKeyDown(key.key);
 }
 function handleKeyUp(key: MappedKey) {
   keyPressed[key.key] = false;
+  game.handleKeyUp(key.key);
 }
 
 function clamp(v: number, min: number, max: number) {

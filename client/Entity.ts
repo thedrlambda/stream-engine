@@ -1,6 +1,6 @@
 import { CollidingThingy } from "./CollidingThingy";
 import { GameEntity } from "./GameEntity";
-import { char, coins, GRAVITY, point_is_solid, TILE_SIZE } from "./index";
+import { char, coins, GRAVITY, MapCollider, TILE_SIZE } from "./index";
 import { AnimationThing } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 
@@ -19,16 +19,16 @@ export class Entity implements CollidingThingy, GameEntity {
   ) {
     this.animation = idle;
   }
-  update(dt: number) {
+  update(dt: number, mapCollider: MapCollider) {
     if (Math.abs(this.velX) < 2) this.velX = 0;
     let dx = this.velX * dt;
     this.x += dx;
 
-    let leftPoint = point_is_solid(
+    let leftPoint = mapCollider.point_is_solid(
       this.x - TILE_SIZE / 8,
       this.y - TILE_SIZE / 8
     );
-    let rightPoint = point_is_solid(
+    let rightPoint = mapCollider.point_is_solid(
       this.x + TILE_SIZE / 8,
       this.y - TILE_SIZE / 8
     );
@@ -55,7 +55,7 @@ export class Entity implements CollidingThingy, GameEntity {
     let dy = this.velY * dt;
     this.y += dy;
 
-    let basePoint = point_is_solid(this.x, this.y);
+    let basePoint = mapCollider.point_is_solid(this.x, this.y);
     if (basePoint !== undefined) {
       if (this.coin) {
         this.y -= dy;

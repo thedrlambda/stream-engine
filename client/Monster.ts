@@ -6,9 +6,9 @@ import {
   colliders,
   entities,
   GRAVITY,
+  MapCollider,
   MONSTER_LAYER,
   PLAYER_LAYER,
-  point_is_solid,
   TILE_SIZE,
   TwoWayAnimation,
   WALK_SPEED,
@@ -55,11 +55,11 @@ export class Monster implements GameEntity {
   ) {
     this.animation = idle.right;
   }
-  update(dt: number) {
+  update(dt: number, mapCollider: MapCollider) {
     this.velY += GRAVITY * dt;
     let dy = this.velY * dt;
     this.y += dy;
-    let basePoint = point_is_solid(this.x, this.y);
+    let basePoint = mapCollider.point_is_solid(this.x, this.y);
     if (basePoint !== undefined) {
       this.y -= this.y % TILE_SIZE;
       this.velY = 0;
@@ -81,11 +81,11 @@ export class Monster implements GameEntity {
       this.x += dx;
     }
 
-    let leftPoint = point_is_solid(
+    let leftPoint = mapCollider.point_is_solid(
       this.x - TILE_SIZE / 4,
       this.y - TILE_SIZE / 2
     );
-    let rightPoint = point_is_solid(
+    let rightPoint = mapCollider.point_is_solid(
       this.x + TILE_SIZE / 4,
       this.y - TILE_SIZE / 2
     );

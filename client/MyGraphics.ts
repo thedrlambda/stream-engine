@@ -21,6 +21,12 @@ export class MyGraphics {
     this.ctx.strokeStyle = color;
     this.ctx.fillStyle = color;
   }
+  setBackgroundColor(color: string) {
+    let before = this.ctx.fillStyle;
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(0, 0, this.width, this.height);
+    this.ctx.fillStyle = before;
+  }
   drawText(str: string, x: number, y: number) {
     this.ctx.strokeStyle = "red";
     this.ctx.strokeText(str, x, y);

@@ -4,9 +4,9 @@ import {
   GRAVITY,
   JumpingAnimations,
   keyPressed,
+  MapCollider,
   PLAYER_LAYER,
   power,
-  point_is_solid,
   tile_of_world,
   TILE_SIZE,
   TwoWayAnimation,
@@ -39,11 +39,11 @@ export class Character implements GameEntity {
     this.animation = idle.right;
     this.stamina = this.maxStamina;
   }
-  update(dt: number) {
+  update(dt: number, mapCollider: MapCollider) {
     // FIXME a bit too long
     if (power) this.running = true;
 
-    let topPoint = point_is_solid(this.x, this.y - TILE_SIZE);
+    let topPoint = mapCollider.point_is_solid(this.x, this.y - TILE_SIZE);
     if (topPoint !== undefined) {
       this.y += TILE_SIZE - ((this.y - TILE_SIZE) % TILE_SIZE);
       this.velY = 0;
@@ -52,7 +52,7 @@ export class Character implements GameEntity {
     this.velY += GRAVITY * dt;
     let dy = this.velY * dt;
     this.y += dy;
-    let basePoint = point_is_solid(this.x, this.y);
+    let basePoint = mapCollider.point_is_solid(this.x, this.y);
     if (basePoint !== undefined) {
       this.y -= this.y % TILE_SIZE;
       let desiredJump =
@@ -95,11 +95,11 @@ export class Character implements GameEntity {
     let dx = this.velX * dt;
     this.x += dx;
 
-    let leftPoint = point_is_solid(
+    let leftPoint = mapCollider.point_is_solid(
       this.x - TILE_SIZE / 4,
       this.y - TILE_SIZE / 2
     );
-    let rightPoint = point_is_solid(
+    let rightPoint = mapCollider.point_is_solid(
       this.x + TILE_SIZE / 4,
       this.y - TILE_SIZE / 2
     );
