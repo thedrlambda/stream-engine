@@ -19,12 +19,15 @@ export class JumpCharacter implements GameEntity {
   private facingRight = true;
   private animation: AnimationThing<JumpCharacter>;
   private desiredJump: number = 0;
+  private recovery: number = 0;
   constructor(
     private x: number,
     private y: number,
     private run: TwoWayAnimation<JumpCharacter>,
     private idle: TwoWayAnimation<JumpCharacter>,
     private jump: JumpingAnimations<JumpCharacter>,
+    private charging: TwoWayAnimation<JumpCharacter>,
+    private recovering: TwoWayAnimation<JumpCharacter>,
     private baselineOffset: number
   ) {
     this.animation = idle.right;
@@ -34,23 +37,32 @@ export class JumpCharacter implements GameEntity {
     let topPoint = mapCollider.point_is_solid(this.x, this.y - TILE_SIZE);
     if (topPoint !== undefined) {
       this.y += TILE_SIZE - ((this.y - TILE_SIZE) % TILE_SIZE);
-      this.velY = 0;
+      this.velY = Math.max(0, this.velY);
     }
 
+    this.recovery -= dt;
     this.velY += GRAVITY * dt;
     let dy = this.velY * dt;
     this.y += dy;
     let basePoint = mapCollider.point_is_solid(this.x, this.y);
     if (basePoint !== undefined) {
+      if (this.velY > 300) {
+        this.recovery = 3;
+      }
       this.y -= this.y % TILE_SIZE;
-      this.velY = this.desiredJump;
-      if (!keyPressed["ArrowUp"])
-        this.velX =
-          3 *
-          ((keyPressed["ArrowRight"] ? 1 : 0) -
-            (keyPressed["ArrowLeft"] ? 1 : 0)) *
-          WALK_SPEED;
-      else this.velX = 0;
+      if (this.recovery <= 0) {
+        this.velY = this.desiredJump;
+        if (!keyPressed["ArrowUp"])
+          this.velX =
+            3 *
+            ((keyPressed["ArrowRight"] ? 1 : 0) -
+              (keyPressed["ArrowLeft"] ? 1 : 0)) *
+            WALK_SPEED;
+        else this.velX = 0;
+      } else {
+        this.velX = 0;
+        this.velY = 0;
+      }
     }
     this.desiredJump = 0;
 
@@ -90,8 +102,16 @@ export class JumpCharacter implements GameEntity {
       this.animation = this.facingRight
         ? this.jump.rightFalling
         : this.jump.leftFalling;
+    } else if (this.recovery > 0) {
+      this.animation = this.facingRight
+        ? this.recovering.right
+        : this.recovering.left;
     } else if (Math.abs(this.velX) > 50) {
       this.animation = this.facingRight ? this.run.right : this.run.left;
+    } else if (keyPressed["ArrowUp"]) {
+      this.animation = this.facingRight
+        ? this.charging.right
+        : this.charging.left;
     } else {
       this.animation = this.facingRight ? this.idle.right : this.idle.left;
     }

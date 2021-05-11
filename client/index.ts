@@ -37,6 +37,7 @@ export const SLEEP = 1000 / FPS;
 const JUMP_CHAR_RUN = "assets/sprites/SteamMan/SteamMan_run.png";
 const JUMP_CHAR_IDLE = "assets/sprites/SteamMan/SteamMan_idle.png";
 const JUMP_CHAR_JUMP = "assets/sprites/SteamMan/SteamMan_jump.png";
+const JUMP_CHAR_DEATH = "assets/sprites/SteamMan/SteamMan_death.png";
 const CHAR_WALK = "assets/sprites/GraveRobber/GraveRobber_walk.png";
 const CHAR_RUN = "assets/sprites/GraveRobber/GraveRobber_run.png";
 const CHAR_IDLE = "assets/sprites/GraveRobber/GraveRobber_idle.png";
@@ -512,17 +513,17 @@ const JUMP_WORLD = [
 class JumpGuy implements Game {
   private map: Tile[][];
   private mapCollider: JumpGameMapCollider;
-  private constructor(private player: JumpCharacter) {
+  private constructor(private player: JumpCharacter, jumpWorld: boolean[][]) {
     this.map = [];
-    for (let y = 0; y < JUMP_WORLD.length; y++) {
+    for (let y = 0; y < jumpWorld.length; y++) {
       this.map.push([]);
-      for (let x = 0; x < JUMP_WORLD[y].length; x++) {
-        if (!JUMP_WORLD[y][x]) continue;
+      for (let x = 0; x < jumpWorld[y].length; x++) {
+        if (!jumpWorld[y][x]) continue;
         let t = handleInterior(
-          JUMP_WORLD,
+          jumpWorld,
           x,
           y,
-          calculateOrthogonalMask(JUMP_WORLD, x, y)
+          calculateOrthogonalMask(jumpWorld, x, y)
         );
         this.map[y][x] = new Tile(tileMap, t);
       }
@@ -530,27 +531,44 @@ class JumpGuy implements Game {
     this.mapCollider = new JumpGameMapCollider(this.map);
   }
   static async initialize() {
-    char_run_img = await MyImage.load(JUMP_CHAR_RUN);
-    char_idle_img = await MyImage.load(JUMP_CHAR_IDLE);
-    char_jump_img = await MyImage.load(JUMP_CHAR_JUMP);
+    let char_run_img = await MyImage.load(JUMP_CHAR_RUN);
+    let char_idle_img = await MyImage.load(JUMP_CHAR_IDLE);
+    let char_jump_img = await MyImage.load(JUMP_CHAR_JUMP);
+    let char_death_img = new TileMap(await MyImage.load(JUMP_CHAR_DEATH), 6, 1);
 
     let tiles = await MyImage.load("assets/tiles/Tileset.png");
     tileMap = new TileMap(tiles, 10, 10);
 
     let run = twoWayAnimation(char_run_img, 6, 0, 1, true, []);
     let idle = twoWayAnimation(char_idle_img, 4, 0, 1.2, true, []);
-    let jump = twoWayStaticAnimation(char_jump_img, true);
+    let jump = twoWayJumpAnimation(char_jump_img, true);
+    let charging = twoWayStaticAnimation(char_death_img, true, 1);
+    let recovering = twoWayStaticAnimation(char_death_img, true, 5);
+
+    let px = -1;
+    let py = -1;
+    let map = (await ajax("/jumpPrinceWorld.map")).split("\n").map((line, y) =>
+      line.split("").map((c, x) => {
+        if (c === "@") {
+          px = x;
+          py = y;
+        }
+        return c === "#";
+      })
+    );
 
     let player = new JumpCharacter(
-      tile_to_world(2),
-      tile_to_world(JUMP_WORLD.length - 1),
+      tile_to_world(px),
+      tile_to_world(py + 1),
       run,
       idle,
       jump,
+      charging,
+      recovering,
       8
     );
 
-    return new JumpGuy(player);
+    return new JumpGuy(player, map);
   }
   draw(g: MyGraphics) {
     canvasGraphics.clear();
@@ -611,6 +629,24 @@ enum Depth {
   FOREGROUND,
 }
 
+function ajax(
+  url: string,
+  method: "GET" | "POST" | "PUT" = "GET",
+  body?: any,
+  accessToken?: string
+) {
+  return new Promise<string>((resolve, reject) => {
+    let xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function () {
+      if (this.readyState == 4 && this.status == 200) {
+        resolve(this.responseText);
+      }
+    };
+    xhttp.open(method, url, true);
+    xhttp.send();
+  });
+}
+
 export interface TwoWayAnimation<T> {
   left: MyAnimation<T>;
   right: MyAnimation<T>;
@@ -622,7 +658,7 @@ export interface JumpingAnimations<T> {
   leftFalling: MyAnimation<T>;
   rightFalling: MyAnimation<T>;
 }
-function twoWayStaticAnimation<T>(
+function twoWayJumpAnimation<T>(
   rightImg: MyImage,
   facingRight: boolean
 ): JumpingAnimations<T> {
@@ -657,6 +693,26 @@ function twoWayStaticAnimation<T>(
       leftFalling,
     ];
   return { leftRising, leftFalling, rightRising, rightFalling };
+}
+
+function twoWayStaticAnimation<T>(
+  rightMap: TileMap,
+  facingRight: boolean,
+  index: number
+): TwoWayAnimation<T> {
+  let right = new MyAnimation(
+    rightMap,
+    new Point2d(index, 0),
+    new StillTicker(new FromBeginning())
+  );
+  let leftMap = rightMap.flip();
+  let left = new MyAnimation(
+    leftMap,
+    new Point2d(leftMap.getWidth() - index - 1, 0),
+    new StillTicker(new FromBeginning())
+  );
+  if (!facingRight) [left, right] = [right, left];
+  return { left, right };
 }
 
 function twoWayAnimation<T>(
@@ -704,7 +760,7 @@ function newCharacter(x: number, y: number) {
   let walk = twoWayAnimation(char_walk_img, 6, 0, 1, true, []);
   let run = twoWayAnimation(char_run_img, 6, 0, 1, true, []);
   let idle = twoWayAnimation(char_idle_img, 4, 0, 1.2, true, []);
-  let jump = twoWayStaticAnimation(char_jump_img, true);
+  let jump = twoWayJumpAnimation(char_jump_img, true);
   let hurt = twoWayAnimation(char_hurt_img, 3, 1, 0.5, true, [
     {
       frameNumber: 1,

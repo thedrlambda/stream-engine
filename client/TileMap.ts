@@ -5,7 +5,7 @@ import { Point2d } from "./Point2d";
 export class TileMap {
   private tw: number;
   private th: number;
-  constructor(private img: MyImage, w: number, h: number) {
+  constructor(private img: MyImage, private w: number, private h: number) {
     this.tw = ~~(img.width / w);
     this.th = ~~(img.height / h);
   }
@@ -34,5 +34,12 @@ export class TileMap {
       this.tw,
       this.th
     );
+  }
+  flip() {
+    let img = this.img.flipped();
+    return new TileMap(img, this.w, this.h);
+  }
+  getWidth() {
+    return this.w;
   }
 }
