@@ -4,6 +4,7 @@ import {
   JumpingAnimations,
   keyPressed,
   MapCollider,
+  setCookie,
   tile_of_world,
   TILE_SIZE,
   TwoWayAnimation,
@@ -14,8 +15,6 @@ import { AnimationThing } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 
 export class JumpCharacter implements GameEntity {
-  private velX = 0;
-  private velY = 0;
   private facingRight = true;
   private animation: AnimationThing<JumpCharacter>;
   private desiredJump: number = 0;
@@ -23,6 +22,8 @@ export class JumpCharacter implements GameEntity {
   constructor(
     private x: number,
     private y: number,
+    private velX: number,
+    private velY: number,
     private run: TwoWayAnimation<JumpCharacter>,
     private idle: TwoWayAnimation<JumpCharacter>,
     private jump: JumpingAnimations<JumpCharacter>,
@@ -87,6 +88,12 @@ export class JumpCharacter implements GameEntity {
         (((this.x + TILE_SIZE / 4) % TILE_SIZE) + TILE_SIZE) % TILE_SIZE;
       this.velX = -WALK_SPEED;
     }
+
+    setCookie(
+      "playerPos",
+      this.x + "," + this.y + "," + this.velX + "," + this.velY,
+      30
+    );
 
     this.animation.update(dt, this);
 

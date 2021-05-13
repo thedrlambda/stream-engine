@@ -387,128 +387,6 @@ class MoneyHealth implements Game {
   }
   handleKeyUp(key: string) {}
 }
-const JUMP_WORLD = [
-  [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    true,
-    false,
-    false,
-    false,
-    false,
-  ],
-  [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ],
-  [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    true,
-  ],
-  [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ],
-  [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    true,
-    false,
-    false,
-  ],
-  [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ],
-  [false, false, false, false, false, false, false, false, false, false, false],
-  [false, false, false, false, false, false, true, false, false, false, false],
-  [false, false, false, false, false, false, false, false, false, false, false],
-  [false, false, false, false, false, false, false, false, false, false, true],
-  [false, false, false, false, false, false, false, false, false, false, false],
-  [true, false, false, false, false, false, false, false, true, false, false],
-  [true, false, false, false, false, false, false, false, false, false, false],
-  [true, false, false, false, false, false, false, false, false, false, false],
-  [true, false, false, false, false, false, true, false, false, false, false],
-  [true, false, false, false, false, false, false, false, false, false, false],
-  [true, false, false, false, false, false, false, false, false, false, true],
-  [true, false, false, false, false, false, false, false, false, false, false],
-  [true, false, false, false, false, false, false, false, true, false, false],
-  [true, false, false, false, false, false, false, false, false, false, false],
-  [
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-  ],
-];
 
 class JumpGuy implements Game {
   private map: Tile[][];
@@ -547,19 +425,31 @@ class JumpGuy implements Game {
 
     let px = -1;
     let py = -1;
+    let vx = 0;
+    let vy = 0;
     let map = (await ajax("/jumpPrinceWorld.map")).split("\n").map((line, y) =>
       line.split("").map((c, x) => {
         if (c === "@") {
-          px = x;
-          py = y;
+          px = tile_to_world(x) + TILE_SIZE / 2;
+          py = tile_to_world(y + 1);
         }
         return c === "#";
       })
     );
+    let cook = getCookie("playerPos");
+    if (cook) {
+      let [x, y, v1, v2] = cook.split(",");
+      px = +x;
+      py = +y;
+      vx = +v1;
+      vy = +v2;
+    }
 
     let player = new JumpCharacter(
-      tile_to_world(px),
-      tile_to_world(py + 1),
+      px,
+      py,
+      vx,
+      vy,
       run,
       idle,
       jump,
@@ -606,6 +496,29 @@ class JumpGuy implements Game {
       upStart = Date.now();
     }
   }
+}
+
+export function setCookie(cname: string, cvalue: string, exdays: number) {
+  var d = new Date();
+  d.setTime(d.getTime() + exdays * 24 * 60 * 60 * 1000);
+  var expires = "expires=" + d.toUTCString();
+  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+}
+
+function getCookie(cname: string) {
+  var name = cname + "=";
+  var decodedCookie = decodeURIComponent(document.cookie);
+  var ca = decodedCookie.split(";");
+  for (var i = 0; i < ca.length; i++) {
+    var c = ca[i];
+    while (c.charAt(0) == " ") {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) == 0) {
+      return c.substring(name.length, c.length);
+    }
+  }
+  return "";
 }
 
 let game: Game;
