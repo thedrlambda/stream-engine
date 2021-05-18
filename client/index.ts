@@ -21,6 +21,7 @@ import { MyImage } from "./MyImage";
 import { Particle } from "./Particle";
 import { Point2d } from "./Point2d";
 import { Profiler } from "./Profiler";
+import { Persistance, Region } from "./Region";
 import { StaticObject } from "./StaticObject";
 import { Tile } from "./Tile";
 import { TileMap } from "./TileMap";
@@ -58,6 +59,12 @@ let monster_idle_img: MyImage;
 let monster_throw_attack_img: MyImage;
 let monster_attack_img: MyImage;
 let chestImage: MyImage;
+let sign_right: MyImage;
+let sign_left: MyImage;
+let sign_right_up: MyImage;
+let sign_left_up: MyImage;
+let sign_right_down: MyImage;
+let sign_left_down: MyImage;
 export const MONSTERS = 3;
 const KEY_CONFIG: { [key: string]: string } = {
   d: "ArrowRight",
@@ -199,6 +206,7 @@ class Menu implements Game {
   }
   draw(g: MyGraphics) {
     canvasGraphics.clear();
+    canvasGraphics.setColor("teal");
     this.buttons.forEach((b) => b.draw());
   }
   update(dt: number) {}
@@ -391,7 +399,13 @@ class MoneyHealth implements Game {
 class JumpGuy implements Game {
   private map: Tile[][];
   private mapCollider: JumpGameMapCollider;
-  private constructor(private player: JumpCharacter, jumpWorld: boolean[][]) {
+  private backgroundFluff: StaticObject[] = [];
+  private constructor(
+    private player: JumpCharacter,
+    jumpWorld: boolean[][],
+    private timer: { value: number },
+    private signs: StaticObject[]
+  ) {
     this.map = [];
     for (let y = 0; y < jumpWorld.length; y++) {
       this.map.push([]);
@@ -404,6 +418,20 @@ class JumpGuy implements Game {
           calculateOrthogonalMask(jumpWorld, x, y)
         );
         this.map[y][x] = new Tile(tileMap, t);
+        if (Math.random() < 0.66) continue;
+        // Find a tree that is happy
+        let candidates = fluffConfiguration.filter((tree) =>
+          tree.hasSpace(jumpWorld, x, y)
+        );
+        if (candidates.length === 0) continue;
+        let tree = candidates[~~(Math.random() * candidates.length)];
+        if (tree !== undefined) {
+          if (tree.foreground) {
+            signs.splice(0, 0, new StaticObject(tree.img, x, y));
+          } else {
+            this.backgroundFluff.push(new StaticObject(tree.img, x, y));
+          }
+        }
       }
     }
     this.mapCollider = new JumpGameMapCollider(this.map);
@@ -414,8 +442,73 @@ class JumpGuy implements Game {
     let char_jump_img = await MyImage.load(JUMP_CHAR_JUMP);
     let char_death_img = new TileMap(await MyImage.load(JUMP_CHAR_DEATH), 6, 1);
 
-    let tiles = await MyImage.load("assets/tiles/Tileset.png");
-    tileMap = new TileMap(tiles, 10, 10);
+    fluffConfiguration = (
+      await Promise.all([
+        loadObject(
+          "assets/objects/Willows/1.png",
+          [`...`, `?..`, `?.?`, `?.?`, `##?`],
+          Depth.FOREGROUND
+        ),
+        loadObject(
+          "assets/objects/Willows/2.png",
+          [`...`, `...`, `?.?`, `?.?`, `...`, `###`],
+          Depth.BACKGROUND
+        ),
+        loadObject(
+          "assets/objects/Willows/3.png",
+          [`?...?`, `??..?`, `??..?`, `???..`, `??###`],
+          Depth.BACKGROUND
+        ),
+        loadObject("assets/objects/Bushes/1.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Bushes/2.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Bushes/3.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Bushes/4.png", [`.`, `#`], Depth.BACKGROUND),
+        loadObject(
+          "assets/objects/Bushes/5.png",
+          [`...`, `###`],
+          Depth.BACKGROUND
+        ),
+        loadObject("assets/objects/Bushes/6.png", [`.`, `#`], Depth.BACKGROUND),
+        loadObject(
+          "assets/objects/Bushes/7.png",
+          [`...`, `###`],
+          Depth.BACKGROUND
+        ),
+        loadObject(
+          "assets/objects/Bushes/8.png",
+          [`...`, `###`],
+          Depth.BACKGROUND
+        ),
+        loadObject(
+          "assets/objects/Bushes/9.png",
+          [`...`, `###`],
+          Depth.BACKGROUND
+        ),
+        loadObject("assets/objects/Grass/1.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/2.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/3.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/4.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/5.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/6.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/7.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/8.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/9.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/10.png", [`.`, `#`], Depth.FOREGROUND),
+      ])
+    ).flat();
+
+    tileMap = new TileMap(
+      await MyImage.load("assets/tiles/Tileset.png"),
+      10,
+      10
+    );
+
+    sign_right = await MyImage.load("assets/objects/Pointers/1.png");
+    sign_left = await MyImage.load("assets/objects/Pointers/2.png");
+    sign_right_up = await MyImage.load("assets/objects/Pointers/3.png");
+    sign_left_up = await MyImage.load("assets/objects/Pointers/4.png");
+    sign_right_down = await MyImage.load("assets/objects/Pointers/5.png");
+    sign_left_down = await MyImage.load("assets/objects/Pointers/6.png");
 
     let run = twoWayAnimation(char_run_img, 6, 0, 1, true, []);
     let idle = twoWayAnimation(char_idle_img, 4, 0, 1.2, true, []);
@@ -427,22 +520,52 @@ class JumpGuy implements Game {
     let py = -1;
     let vx = 0;
     let vy = 0;
+    let timer = { value: -1 };
+    let signs: StaticObject[] = [];
     let map = (await ajax("/jumpPrinceWorld.map")).split("\n").map((line, y) =>
       line.split("").map((c, x) => {
         if (c === "@") {
           px = tile_to_world(x) + TILE_SIZE / 2;
           py = tile_to_world(y + 1);
+        } else if (c === "$") {
+          colliders.push(
+            new Region(
+              tile_to_world(x),
+              tile_to_world(y),
+              Persistance.PERMANENT,
+              () => {
+                timer.value = Date.now();
+              },
+              PLAYER_LAYER
+            )
+          );
+        } else if (c === "↙") {
+          signs.push(new StaticObject(sign_left_down, x, y + 1));
+        } else if (c === "←") {
+          signs.push(new StaticObject(sign_left, x, y + 1));
+        } else if (c === "↖") {
+          signs.push(new StaticObject(sign_left_up, x, y + 1));
+        } else if (c === "↗") {
+          signs.push(new StaticObject(sign_right_up, x, y + 1));
+        } else if (c === "→") {
+          signs.push(new StaticObject(sign_right, x, y + 1));
+        } else if (c === "↘") {
+          signs.push(new StaticObject(sign_right_down, x, y + 1));
         }
         return c === "#";
       })
     );
-    let cook = getCookie("playerPos");
-    if (cook) {
-      let [x, y, v1, v2] = cook.split(",");
+    let pos = getCookie("playerPos");
+    if (pos) {
+      let [x, y, v1, v2] = pos.split(",");
       px = +x;
       py = +y;
       vx = +v1;
       vy = +v2;
+    }
+    let timerCookie = getCookie("timer");
+    if (timerCookie) {
+      timer.value = Date.now() - +timerCookie;
     }
 
     let player = new JumpCharacter(
@@ -458,26 +581,38 @@ class JumpGuy implements Game {
       8
     );
 
-    return new JumpGuy(player, map);
+    return new JumpGuy(player, map, timer, signs);
   }
   draw(g: MyGraphics) {
-    canvasGraphics.clear();
-    this.player.setCamera(canvasGraphics);
+    g.clear();
+    g.setZoom(1);
+    this.player.setCameraLocation(g);
     let c = Math.floor(
       255 - 230 * (this.player.getY() / (TILE_SIZE * this.map.length))
     );
-    canvasGraphics.setBackgroundColor(`rgb(${c}, ${c}, ${c})`);
-    // draw map
+    g.setBackgroundColor(`rgb(${c}, ${c}, ${c})`);
+    this.backgroundFluff.forEach((s) => s.draw(g));
+    let startX = g.getLeftmostTile();
+    let endX = g.getRightmostTile();
     for (let y = 0; y < this.map.length; y++) {
-      for (let x = 0; x < this.map[y].length; x++) {
-        this.map[y][x]?.draw(
-          canvasGraphics,
-          tile_to_world(x),
-          tile_to_world(y)
-        );
+      for (let x = startX; x < endX; x++) {
+        this.mapCollider
+          .tile_is_solid(x, y)
+          ?.draw(g, tile_to_world(x), tile_to_world(y));
       }
     }
-    this.player.draw(canvasGraphics);
+    this.player.draw(g);
+    this.signs.forEach((s) => s.draw(g));
+    this.player.setCameraZoom(canvasGraphics);
+    canvasGraphics.setTranslate(0, 0);
+    canvasGraphics.drawImageCentered(gImg, 0, 0);
+    if (this.timer.value >= 0) {
+      canvasGraphics.setColor("white");
+      let diff = Date.now() - this.timer.value;
+      let time = formatTime(diff);
+      canvasGraphics.drawText("" + time, 10, 30);
+      setCookie("timer", "" + diff, 30);
+    }
   }
 
   update(dt: number) {
@@ -496,6 +631,19 @@ class JumpGuy implements Game {
       upStart = Date.now();
     }
   }
+}
+
+function formatTime(ms: number) {
+  let s = Math.floor(ms / 1000);
+  let m = Math.floor(s / 60);
+  s -= m * 60;
+  let h = Math.floor(m / 60);
+  m -= h * 60;
+  let sText = (m !== 0 || h !== 0) && s < 10 ? "0" + s : s;
+  let mText =
+    m === 0 && h === 0 ? "" : h !== 0 && m < 10 ? "0" + m + ":" : m + ":";
+  let hText = h === 0 ? "" : h + ":";
+  return hText + mText + sText;
 }
 
 export function setCookie(cname: string, cvalue: string, exdays: number) {

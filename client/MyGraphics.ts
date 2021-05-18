@@ -21,6 +21,9 @@ export class MyGraphics {
     this.ctx.strokeStyle = color;
     this.ctx.fillStyle = color;
   }
+  setZoom(z: number) {
+    this.zoom = z;
+  }
   setBackgroundColor(color: string) {
     let before = this.ctx.fillStyle;
     this.ctx.fillStyle = color;
@@ -28,20 +31,20 @@ export class MyGraphics {
     this.ctx.fillStyle = before;
   }
   drawText(str: string, x: number, y: number) {
-    this.ctx.strokeStyle = "red";
-    this.ctx.strokeText(str, x, y);
+    let before = this.ctx.fillStyle;
+    this.ctx.fillStyle = "black";
+    this.ctx.fillText(str, x + 2, y + 2);
+    this.ctx.fillStyle = before;
+    this.ctx.fillText(str, x, y);
   }
   drawTextCentered(str: string, x: number, y: number) {
     this.ctx.font = "bold 30px Arial";
     let w = this.ctx.measureText(str).width / this.zoom;
     let tx = (x - w / 2 - this.offsetX) * this.zoom;
     let ty = (y - this.offsetY) * this.zoom;
-    this.ctx.fillStyle = "black";
-    this.ctx.fillText(str, tx + 2, ty + 2);
-    this.ctx.fillStyle = "red";
-    this.ctx.fillText(str, tx, ty);
+    this.drawText(str, tx, ty);
   }
-  drawFromBaseLine(img: MyImage, x: number, y: number) {
+  drawImageFromBaseLine(img: MyImage, x: number, y: number) {
     let tx = (x - img.width / 2 - this.offsetX) * this.zoom;
     let ty = (y - img.height - this.offsetY) * this.zoom;
     let tw = img.width * this.zoom;
@@ -49,6 +52,15 @@ export class MyGraphics {
     if (tx > this.width || ty > this.height || tx + tw < 0 || ty + th < 0)
       return;
     this.ctx.drawImage(img.src, tx, ty, tw, th);
+  }
+  drawImageCentered(img: CanvasImageSource, x: number, y: number) {
+    let tx = (x - +img.width / 2 - this.offsetX) * this.zoom;
+    let ty = (y - +img.height / 2 - this.offsetY) * this.zoom;
+    let tw = +img.width * this.zoom;
+    let th = +img.height * this.zoom;
+    if (tx > this.width || ty > this.height || tx + tw < 0 || ty + th < 0)
+      return;
+    this.ctx.drawImage(img, tx, ty, tw, th);
   }
   drawImageScaled(
     src: CanvasImageSource,

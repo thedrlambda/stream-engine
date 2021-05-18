@@ -1,9 +1,11 @@
 import { GameEntity } from "./GameEntity";
 import {
+  colliders,
   GRAVITY,
   JumpingAnimations,
   keyPressed,
   MapCollider,
+  PLAYER_LAYER,
   setCookie,
   tile_of_world,
   TILE_SIZE,
@@ -19,6 +21,8 @@ export class JumpCharacter implements GameEntity {
   private animation: AnimationThing<JumpCharacter>;
   private desiredJump: number = 0;
   private recovery: number = 0;
+  private targetZoom: number = 2;
+  private zoom: number = 2;
   constructor(
     private x: number,
     private y: number,
@@ -51,7 +55,7 @@ export class JumpCharacter implements GameEntity {
         this.recovery = 3;
       }
       this.y -= this.y % TILE_SIZE;
-      if (this.recovery <= 0) {
+      if (this.recovery <= 0 && !keyPressed["Shift"]) {
         this.velY = this.desiredJump;
         if (!keyPressed["ArrowUp"])
           this.velX =
@@ -94,6 +98,17 @@ export class JumpCharacter implements GameEntity {
       this.x + "," + this.y + "," + this.velX + "," + this.velY,
       30
     );
+
+    colliders.forEach((e) => {
+      if (
+        this.x - TILE_SIZE / 4 <= e.getX() &&
+        e.getX() <= this.x + TILE_SIZE / 4 &&
+        this.y - TILE_SIZE <= e.getY() &&
+        e.getY() <= this.y &&
+        e.onSameLayer(PLAYER_LAYER)
+      )
+        e.activate();
+    });
 
     this.animation.update(dt, this);
 
@@ -139,8 +154,15 @@ export class JumpCharacter implements GameEntity {
       .find((w) => w.getPosition().x === tx && w.getPosition().y === ty)
       ?.activate();
   }
-  setCamera(g: MyGraphics) {
+  setCameraLocation(g: MyGraphics) {
     g.setTranslate(this.x, this.y - 2 * TILE_SIZE);
+  }
+  setCameraZoom(g: MyGraphics) {
+    if (this.velY > 250) this.targetZoom += 0.01;
+    else if (keyPressed["Shift"] && this.velY <= 0) this.targetZoom = 1.35;
+    else if (this.recovery <= 0) this.targetZoom = 2;
+    this.zoom += (this.targetZoom - this.zoom) / 2;
+    g.setZoom(this.zoom);
   }
   getX() {
     return this.x;
