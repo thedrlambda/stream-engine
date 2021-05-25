@@ -3,6 +3,7 @@ import { CollidingThingy } from "./CollidingThingy";
 import { Entity } from "./Entity";
 import { GameEntity } from "./GameEntity";
 import { GameObject } from "./GameObject";
+import { HexTile } from "./HexTile";
 import { JumpCharacter } from "./JumpCharacter";
 import { Monster } from "./Monster";
 import {
@@ -49,6 +50,7 @@ const MONSTER_IDLE = "assets/sprites/BigBloated/Big_bloated_idle.png";
 const MONSTER_THROW_ATTACK =
   "assets/sprites/BigBloated/Big_bloated_attack1.png";
 const MONSTER_ATTACK = "assets/sprites/BigBloated/Big_bloated_attack3.png";
+const HEX_TILES = "assets/hex/tileset.png";
 let char_run_img: MyImage;
 let char_walk_img: MyImage;
 let char_idle_img: MyImage;
@@ -202,6 +204,16 @@ class Menu implements Game {
           game = await JumpGuy.initialize();
         }
       ),
+      new Button(
+        "Hex City",
+        canvasGraphics.getVerticalCenter(),
+        160,
+        100,
+        20,
+        async () => {
+          game = await HexCity.initialize();
+        }
+      ),
     ]);
   }
   draw(g: MyGraphics) {
@@ -302,7 +314,7 @@ class MoneyHealth implements Game {
     chestImage = await MyImage.load("assets/objects/Chest.png");
 
     let tiles = await MyImage.load("assets/tiles/Tileset.png");
-    tileMap = new TileMap(tiles, 10, 10);
+    tileMap = new TileMap(tiles, 10, 10, 0);
 
     let h = 4;
     for (let c = 0; c < 3; c++) {
@@ -313,12 +325,14 @@ class MoneyHealth implements Game {
     coinImage = new TileMap(
       await MyImage.load("assets/objects/Coin.png"),
       4,
-      1
+      1,
+      0
     );
     boltImage = new TileMap(
       await MyImage.load("assets/sprites/BigBloated/Bolt.png"),
       1,
-      1
+      1,
+      0
     );
 
     /*
@@ -440,7 +454,12 @@ class JumpGuy implements Game {
     let char_run_img = await MyImage.load(JUMP_CHAR_RUN);
     let char_idle_img = await MyImage.load(JUMP_CHAR_IDLE);
     let char_jump_img = await MyImage.load(JUMP_CHAR_JUMP);
-    let char_death_img = new TileMap(await MyImage.load(JUMP_CHAR_DEATH), 6, 1);
+    let char_death_img = new TileMap(
+      await MyImage.load(JUMP_CHAR_DEATH),
+      6,
+      1,
+      0
+    );
 
     fluffConfiguration = (
       await Promise.all([
@@ -500,7 +519,8 @@ class JumpGuy implements Game {
     tileMap = new TileMap(
       await MyImage.load("assets/tiles/Tileset.png"),
       10,
-      10
+      10,
+      0
     );
 
     sign_right = await MyImage.load("assets/objects/Pointers/1.png");
@@ -633,6 +653,121 @@ class JumpGuy implements Game {
   }
 }
 
+type aStarNode = {
+  x: number;
+  z: number;
+  price: number;
+  est: number;
+  prev?: aStarNode;
+};
+class HexCity implements Game {
+  private static readonly TILE_WIDTH = 30;
+  private static readonly TILE_DEPTH = 7;
+  private map: HexTile[][];
+  private pathMap: number[][] = [];
+  private constructor(private tileset: TileMap) {
+    this.map = [];
+    for (let x = 0; x < 4; x++) {
+      this.map[x] = [];
+      for (let z = 0; z < 40; z++) {
+        if (Math.random() < 0.5)
+          this.map[x][z] = new HexTile(this.tileset, new Point2d(1, 0), 1);
+        else this.map[x][z] = new HexTile(this.tileset, new Point2d(2, 0), 2);
+      }
+    }
+    let path: aStarNode | undefined = this.pathFind(0, 0, 2, 35)!;
+    while (path !== undefined) {
+      this.map[path.x][path.z] = new HexTile(
+        this.tileset,
+        new Point2d(3, 0),
+        1
+      );
+      path = path.prev;
+    }
+    this.map[2][35] = new HexTile(this.tileset, new Point2d(4, 0), 0);
+  }
+  static async initialize() {
+    let tileset = new TileMap(await MyImage.load(HEX_TILES), 6, 3, 1);
+
+    return new HexCity(tileset);
+  }
+  draw(g: MyGraphics) {
+    canvasGraphics.clear();
+    for (let x = 0; x < this.map.length; x++) {
+      for (let z = 0; z < this.map[x].length; z++) {
+        let ax = x * (HexCity.TILE_WIDTH + 14);
+        if (z % 2 === 0) ax += 22;
+        this.map[x][z]?.draw(canvasGraphics, ax, z * HexCity.TILE_DEPTH);
+      }
+    }
+  }
+
+  pathFind(
+    sx: number,
+    sz: number,
+    tx: number,
+    tz: number
+  ): aStarNode | undefined {
+    // TODO make queue a min-heap
+    let queue: aStarNode[] = [];
+    this.pathMap = [];
+    for (let x = 0; x < this.map.length; x++) {
+      this.pathMap[x] = [];
+      for (let z = 0; z < this.map[x].length; z++) {
+        this.pathMap[x][z] = Infinity;
+      }
+    }
+    let path: aStarNode | undefined = undefined;
+    let visit = (x: number, z: number, e: aStarNode) => {
+      if (x < 0 || x >= this.pathMap.length) return;
+      if (z < 0 || z >= this.pathMap[x].length) return;
+      let nPrice = e.price + this.map[x][z].drag;
+      if (this.pathMap[x][z] <= nPrice) return;
+      this.pathMap[x][z] = nPrice;
+      if (x === tx && z === tz) path = e;
+      if (nPrice >= this.pathMap[tx][tz]) return;
+      queue.push({
+        x,
+        z,
+        price: nPrice,
+        est: Math.abs(tx - x) + Math.abs(tz - z),
+        prev: e,
+      });
+    };
+    this.pathMap[sx][sz] = 0;
+    queue.push({
+      x: sx,
+      z: sz,
+      price: 0,
+      est: Math.abs(tx - sx) + Math.abs(tz - sz),
+    });
+    while (queue.length > 0) {
+      let e = queue.pop()!;
+      visit(e.x, e.z - 2, e);
+      visit(e.x, e.z - 1, e);
+      visit(e.x, e.z + 1, e);
+      visit(e.x, e.z + 2, e);
+      if (e.z % 2 === 0) {
+        visit(e.x + 1, e.z - 1, e);
+        visit(e.x + 1, e.z + 1, e);
+      } else {
+        visit(e.x - 1, e.z + 1, e);
+        visit(e.x - 1, e.z - 1, e);
+      }
+      queue.sort((a, b) => a.est - b.est);
+    }
+
+    return path;
+  }
+
+  update(dt: number) {}
+  handleMouseUp() {}
+  handleMouseDown() {}
+  handleMouseMove(x: number, y: number) {}
+  handleKeyUp(key: string) {}
+  handleKeyDown(key: string) {}
+}
+
 function formatTime(ms: number) {
   let s = Math.floor(ms / 1000);
   let m = Math.floor(s / 60);
@@ -723,7 +858,7 @@ function twoWayJumpAnimation<T>(
   rightImg: MyImage,
   facingRight: boolean
 ): JumpingAnimations<T> {
-  let rightMap = new TileMap(rightImg, 6, 1);
+  let rightMap = new TileMap(rightImg, 6, 1, 0);
   let rightRising = new MyAnimation(
     rightMap,
     new Point2d(3, 0),
@@ -735,7 +870,7 @@ function twoWayJumpAnimation<T>(
     new StillTicker(new FromBeginning())
   );
   let leftImg = rightImg.flipped();
-  let leftMap = new TileMap(leftImg, 6, 1);
+  let leftMap = new TileMap(leftImg, 6, 1, 0);
   let leftRising = new MyAnimation(
     leftMap,
     new Point2d(2, 0),
@@ -784,7 +919,7 @@ function twoWayAnimation<T>(
   facingRight: boolean,
   actions: { frameNumber: number; action: (_: T) => void }[]
 ): TwoWayAnimation<T> {
-  let rightMap = new TileMap(rightImg, fileLength, 1);
+  let rightMap = new TileMap(rightImg, fileLength, 1, 0);
   let right = new MyAnimation(
     rightMap,
     new Point2d(offsetX, 0),
@@ -799,7 +934,7 @@ function twoWayAnimation<T>(
     )
   );
   let leftImg = rightImg.flipped();
-  let leftMap = new TileMap(leftImg, fileLength, 1);
+  let leftMap = new TileMap(leftImg, fileLength, 1, 0);
   let left = new MyAnimation(
     leftMap,
     new Point2d(offsetX, 0),
@@ -1304,7 +1439,7 @@ function spawnMonster(c: number) {
 }
 
 function placeDeadChest(x: number, y: number, c: number) {
-  let chestMap = new TileMap(chestImage, 4, 1);
+  let chestMap = new TileMap(chestImage, 4, 1, 0);
   let idleOpen = new MyAnimation(
     chestMap,
     new Point2d(3, 0),
@@ -1314,7 +1449,7 @@ function placeDeadChest(x: number, y: number, c: number) {
 }
 
 function placeLiveChest(x: number, y: number, c: number) {
-  let chestMap = new TileMap(chestImage, 4, 1);
+  let chestMap = new TileMap(chestImage, 4, 1, 0);
   let idleClosed = new MyAnimation(
     chestMap,
     new Point2d(0, 0),
