@@ -3,7 +3,7 @@ import { CollidingThingy } from "./CollidingThingy";
 import { Entity } from "./Entity";
 import { GameEntity } from "./GameEntity";
 import { GameObject } from "./GameObject";
-import { HexTile } from "./HexTile";
+import { HexNeighbors, HexTile, HexTilePrice, HexTileType } from "./HexTile";
 import { JumpCharacter } from "./JumpCharacter";
 import { Monster } from "./Monster";
 import {
@@ -660,48 +660,80 @@ type aStarNode = {
   est: number;
   prev?: aStarNode;
 };
-class HexCity implements Game {
-  private static readonly TILE_WIDTH = 30;
-  private static readonly TILE_DEPTH = 7;
+function reversePath_Helper(
+  path: aStarNode | undefined,
+  rest: aStarNode | undefined
+): aStarNode | undefined {
+  if (path === undefined) return rest;
+  let next = path.prev;
+  path.prev = rest;
+  return reversePath_Helper(next, path);
+}
+function reversePath(path: aStarNode | undefined) {
+  return reversePath_Helper(path, undefined);
+}
+class HexMap {
   private map: HexTile[][];
   private pathMap: number[][] = [];
-  private constructor(private tileset: TileMap) {
+  constructor(tileset: TileMap) {
     this.map = [];
     for (let x = 0; x < 4; x++) {
       this.map[x] = [];
       for (let z = 0; z < 40; z++) {
         if (Math.random() < 0.5)
-          this.map[x][z] = new HexTile(this.tileset, new Point2d(1, 0), 1);
-        else this.map[x][z] = new HexTile(this.tileset, new Point2d(2, 0), 2);
+          this.setTile(
+            x,
+            z,
+            new HexTile(x, z, tileset, HexTileType.Grass, new Point2d(1, 0), 1)
+          );
+        else
+          this.setTile(
+            x,
+            z,
+            new HexTile(x, z, tileset, HexTileType.Swamp, new Point2d(2, 0), 2)
+          );
       }
     }
-    let path: aStarNode | undefined = this.pathFind(0, 0, 2, 35)!;
-    while (path !== undefined) {
-      this.map[path.x][path.z] = new HexTile(
-        this.tileset,
-        new Point2d(3, 0),
-        1
-      );
-      path = path.prev;
-    }
-    this.map[2][35] = new HexTile(this.tileset, new Point2d(4, 0), 0);
   }
-  static async initialize() {
-    let tileset = new TileMap(await MyImage.load(HEX_TILES), 6, 3, 1);
-
-    return new HexCity(tileset);
+  private getTileOrUndefined(x: number, z: number) {
+    return this.map[x] && this.map[x][z];
   }
-  draw(g: MyGraphics) {
-    canvasGraphics.clear();
+  setTile(x: number, z: number, tile: HexTile) {
+    this.map[x][z] = tile;
+    tile.setUpNeighbor(this.getTileOrUndefined(x, z - 2));
+    tile.setRightUpNeighbor(
+      z % 2 === 0
+        ? this.getTileOrUndefined(x + 1, z - 1)
+        : this.getTileOrUndefined(x, z - 1)
+    );
+    tile.setRightDownNeighbor(
+      z % 2 === 0
+        ? this.getTileOrUndefined(x + 1, z + 1)
+        : this.getTileOrUndefined(x, z + 1)
+    );
+    tile.setDownNeighbor(this.getTileOrUndefined(x, z + 2));
+    tile.setLeftDownNeighbor(
+      z % 2 === 0
+        ? this.getTileOrUndefined(x, z + 1)
+        : this.getTileOrUndefined(x - 1, z + 1)
+    );
+    tile.setLeftUpNeighbor(
+      z % 2 === 0
+        ? this.getTileOrUndefined(x, z - 1)
+        : this.getTileOrUndefined(x - 1, z - 1)
+    );
+  }
+  draw(canvasGraphics: MyGraphics) {
     for (let x = 0; x < this.map.length; x++) {
       for (let z = 0; z < this.map[x].length; z++) {
-        let ax = x * (HexCity.TILE_WIDTH + 14);
-        if (z % 2 === 0) ax += 22;
-        this.map[x][z]?.draw(canvasGraphics, ax, z * HexCity.TILE_DEPTH);
+        this.map[x][z]?.draw(
+          canvasGraphics,
+          worldXOfHexTile(x, z),
+          worldZOfHexTile(x, z)
+        );
       }
     }
   }
-
   pathFind(
     sx: number,
     sz: number,
@@ -756,11 +788,79 @@ class HexCity implements Game {
       }
       queue.sort((a, b) => a.est - b.est);
     }
+    return reversePath(path);
+  }
+  visit(x: number, z: number) {
+    this.map[x][z].visit();
+  }
+  getPrices(x: number, z: number) {
+    return this.map[x][z].getPrices();
+  }
+}
+function worldXOfHexTile(x: number, z: number) {
+  let ax = x * (HexCity.TILE_WIDTH + 14);
+  if (z % 2 === 0) ax += 22;
+  return ax;
+}
+function worldZOfHexTile(x: number, z: number) {
+  return z * HexCity.TILE_DEPTH;
+}
+function hexTileXOfWorld(x: number, z: number) {
+  let tz = hexTileZOfWorld(x, z);
+  let tx = (x - (1 - (tz % 2)) * 22) / (HexCity.TILE_WIDTH + 14);
+  return tx;
+}
+function hexTileZOfWorld(x: number, z: number) {
+  let tz = Math.floor(z / HexCity.TILE_DEPTH);
+  return tz;
+}
+class HexCity implements Game {
+  static readonly TILE_WIDTH = 30;
+  static readonly TILE_DEPTH = 7;
+  private map: HexMap;
+  private sx = 0;
+  private sz = 0;
+  private tx = 2;
+  private tz = 35;
+  private path: aStarNode | undefined;
+  private constructor(private tileset: TileMap) {
+    this.map = new HexMap(tileset);
+    this.path = this.map.pathFind(0, 0, 1, 1);
+  }
+  static async initialize() {
+    let tileset = new TileMap(await MyImage.load(HEX_TILES), 6, 9, 1);
 
-    return path;
+    return new HexCity(tileset);
+  }
+  draw(g: MyGraphics) {
+    canvasGraphics.clear();
+    this.map.draw(canvasGraphics);
+    canvasGraphics.setColor("red");
+    canvasGraphics.drawRect(this.sx + 12, this.sz + 10, 6, 10);
   }
 
-  update(dt: number) {}
+  update(dt: number) {
+    if (this.path !== undefined) {
+      let wx = worldXOfHexTile(this.path.x, this.path.z);
+      let wz = worldZOfHexTile(this.path.x, this.path.z);
+      let dx = Math.sign(wx - this.sx);
+      let dz = Math.sign(wz - this.sz) / (Math.abs(dx) * 3 + 1);
+      this.sx += dx;
+      this.sz += dz;
+      if (Math.abs(wx - this.sx) + Math.abs(wz - this.sz) < 2) {
+        let x = this.path.x;
+        let z = this.path.z;
+        this.map.visit(x, z);
+        this.path = this.path.prev;
+        if (this.path === undefined) {
+          this.tx = Math.floor(Math.random() * 4);
+          this.tz = Math.floor(Math.random() * 40);
+          this.path = this.map.pathFind(x, z, this.tx, this.tz);
+        }
+      }
+    }
+  }
+
   handleMouseUp() {}
   handleMouseDown() {}
   handleMouseMove(x: number, y: number) {}
