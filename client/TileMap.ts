@@ -30,14 +30,14 @@ export class TileMap {
   drawFromBaseLine(ctx: MyGraphics, t: Point2d, x: number, y: number) {
     ctx.drawImageSubImageFromBaseLine(
       this.img.src,
-      t.x * this.tw,
-      t.y * this.th,
-      this.tw,
-      this.th,
+      t.x * this.tw + this.margin,
+      t.y * this.th + this.margin,
+      this.tw - this.margin,
+      this.th - this.margin,
       x,
       y,
-      this.tw,
-      this.th
+      this.tw - this.margin,
+      this.th - this.margin
     );
   }
   flip() {

@@ -51,6 +51,7 @@ const MONSTER_THROW_ATTACK =
   "assets/sprites/BigBloated/Big_bloated_attack1.png";
 const MONSTER_ATTACK = "assets/sprites/BigBloated/Big_bloated_attack3.png";
 const HEX_TILES = "assets/hex/tileset.png";
+const ANIMATIONS = "assets/hex/animations.png";
 let char_run_img: MyImage;
 let char_walk_img: MyImage;
 let char_idle_img: MyImage;
@@ -672,6 +673,10 @@ function reversePath_Helper(
 function reversePath(path: aStarNode | undefined) {
   return reversePath_Helper(path, undefined);
 }
+function lengthPath(path: aStarNode | undefined): number {
+  if (path === undefined) return 0;
+  return 1 + lengthPath(path.prev);
+}
 class HexMap {
   private map: HexTile[][];
   private pathMap: number[][] = [];
@@ -756,7 +761,14 @@ class HexMap {
       let nPrice = e.price + this.map[x][z].drag;
       if (this.pathMap[x][z] <= nPrice) return;
       this.pathMap[x][z] = nPrice;
-      if (x === tx && z === tz) path = e;
+      if (x === tx && z === tz)
+        path = {
+          x,
+          z,
+          price: nPrice,
+          est: 0,
+          prev: e,
+        };
       if (nPrice >= this.pathMap[tx][tz]) return;
       queue.push({
         x,
@@ -820,42 +832,83 @@ class HexCity implements Game {
   private map: HexMap;
   private sx = 0;
   private sz = 0;
-  private tx = 2;
-  private tz = 35;
+  private dx = 0;
+  private tx = 1;
+  private tz = 20;
   private path: aStarNode | undefined;
-  private constructor(private tileset: TileMap) {
+  private downSide: TwoWayAnimation<{}>;
+  private down: MyAnimation<{}>;
+  private up: MyAnimation<{}>;
+  private constructor(private tileset: TileMap, private animations: TileMap) {
     this.map = new HexMap(tileset);
-    this.path = this.map.pathFind(0, 0, 1, 1);
+    this.path = this.map.pathFind(0, 0, this.tx, this.tz);
+    this.downSide = twoWayAnimationTileMap(
+      animations,
+      new Point2d(0, 1),
+      1.5,
+      4,
+      true,
+      []
+    );
+    this.down = new MyAnimation(
+      animations,
+      new Point2d(0, 4),
+      new RegularTicker(
+        new Right(1.5, 4, new FromBeginning(), new WrapAround(), [])
+      )
+    );
+    this.up = new MyAnimation(
+      animations,
+      new Point2d(0, 5),
+      new RegularTicker(
+        new Right(1.5, 4, new FromBeginning(), new WrapAround(), [])
+      )
+    );
   }
   static async initialize() {
     let tileset = new TileMap(await MyImage.load(HEX_TILES), 6, 9, 1);
+    let animations = new TileMap(await MyImage.load(ANIMATIONS), 7, 10, 1);
 
-    return new HexCity(tileset);
+    return new HexCity(tileset, animations);
   }
   draw(g: MyGraphics) {
     canvasGraphics.clear();
     this.map.draw(canvasGraphics);
-    canvasGraphics.setColor("red");
-    canvasGraphics.drawRect(this.sx + 12, this.sz + 10, 6, 10);
+    let ani: MyAnimation<{}>;
+    if (this.dx > 0) ani = this.downSide.right;
+    else if (this.dx === 0) ani = this.down;
+    /* if (this.dx < 0) */ else ani = this.downSide.left;
+    ani.drawFromBaseLine(
+      canvasGraphics,
+      this.sx + HexCity.TILE_WIDTH / 2,
+      this.sz + (3 * HexCity.TILE_DEPTH) / 2 + 12
+    );
   }
 
   update(dt: number) {
+    this.downSide.left.update(dt, {});
+    this.downSide.right.update(dt, {});
+    this.down.update(dt, {});
     if (this.path !== undefined) {
       let wx = worldXOfHexTile(this.path.x, this.path.z);
       let wz = worldZOfHexTile(this.path.x, this.path.z);
-      let dx = Math.sign(wx - this.sx);
-      let dz = Math.sign(wz - this.sz) / (Math.abs(dx) * 3 + 1);
-      this.sx += dx;
-      this.sz += dz;
-      if (Math.abs(wx - this.sx) + Math.abs(wz - this.sz) < 2) {
+      this.dx = sign(wx - this.sx, 1) * 2.875;
+      let dz = sign(wz - this.sz, 1);
+      let n = Math.hypot(this.dx, dz);
+      this.sx += (this.dx / n) * 0.4;
+      this.sz += (dz / n) * 0.4;
+      if (sign(wx - this.sx, 1) === 0 && sign(wz - this.sz, 1) === 0) {
         let x = this.path.x;
         let z = this.path.z;
         this.map.visit(x, z);
         this.path = this.path.prev;
-        if (this.path === undefined) {
-          this.tx = Math.floor(Math.random() * 4);
-          this.tz = Math.floor(Math.random() * 40);
+        while (this.path === undefined) {
+          do {
+            this.tx = Math.floor(Math.random() * 4);
+            this.tz = Math.floor(Math.random() * 40);
+          } while (x === this.tx && z === this.tz);
           this.path = this.map.pathFind(x, z, this.tx, this.tz);
+          if (this.path !== undefined) this.path = this.path.prev;
         }
       }
     }
@@ -866,6 +919,11 @@ class HexCity implements Game {
   handleMouseMove(x: number, y: number) {}
   handleKeyUp(key: string) {}
   handleKeyDown(key: string) {}
+}
+
+function sign(n: number, epsilon: number) {
+  if (Math.abs(n) < epsilon) return 0;
+  return Math.sign(n);
 }
 
 function formatTime(ms: number) {
@@ -1042,6 +1100,45 @@ function twoWayAnimation<T>(
       new Left(
         duration,
         fileLength - offsetX,
+        new FromBeginning(),
+        new WrapAround(),
+        actions
+      )
+    )
+  );
+  if (!facingRight) [left, right] = [right, left];
+  return { left, right };
+}
+
+function twoWayAnimationTileMap<T>(
+  rightMap: TileMap,
+  offset: Point2d,
+  duration: number,
+  aniLength: number,
+  facingRight: boolean,
+  actions: { frameNumber: number; action: (_: T) => void }[]
+): TwoWayAnimation<T> {
+  let right = new MyAnimation(
+    rightMap,
+    offset,
+    new RegularTicker(
+      new Right(
+        duration,
+        aniLength,
+        new FromBeginning(),
+        new WrapAround(),
+        actions
+      )
+    )
+  );
+  let leftMap = rightMap.flip();
+  let left = new MyAnimation(
+    leftMap,
+    new Point2d(leftMap.getWidth() - offset.x - aniLength, offset.y),
+    new RegularTicker(
+      new Left(
+        duration,
+        aniLength,
         new FromBeginning(),
         new WrapAround(),
         actions
