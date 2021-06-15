@@ -27,6 +27,7 @@ export class HexWorker {
   private up: MyAnimation<HexWorker>;
   private animation: AnimationThing<HexWorker>;
   private path: aStarNode | undefined;
+  private walkSpeed: number;
   constructor(
     private x: number,
     private z: number,
@@ -57,6 +58,7 @@ export class HexWorker {
     );
     this.animation = this.down;
     this.path = this.map.pathFind(0, 0, 1, 1);
+    this.walkSpeed = Math.random()*0.05 - 0.025 + 0.4;
   }
   draw(ctx: MyGraphics) {
     this.animation.drawFromBaseLine(
@@ -73,8 +75,8 @@ export class HexWorker {
       dx = sign(wx - this.x, 1) * 2.875;
       let dz = sign(wz - this.z, 1);
       let n = Math.hypot(dx, dz);
-      this.x += (dx / n) * 0.4;
-      this.z += (dz / n) * 0.4;
+      this.x += (dx / n) * this.walkSpeed;
+      this.z += (dz / n) * this.walkSpeed;
       if (sign(wx - this.x, 1) === 0 && sign(wz - this.z, 1) === 0) {
         let x = this.path.x;
         let z = this.path.z;

@@ -685,7 +685,7 @@ export class HexMap {
     this.map = [];
     for (let x = 0; x < 5; x++) {
       this.map[x] = [];
-      for (let z = 0; z < 44; z++) {
+      for (let z = 0; z < 46; z++) {
         if (Math.random() < 0.5)
           this.setTile(
             x,
@@ -696,7 +696,7 @@ export class HexMap {
           this.setTile(
             x,
             z,
-            new HexTile(x, z, tileset, HexTileType.Swamp, new Point2d(2, 0), 2)
+            new HexTile(x, z, tileset, HexTileType.Sand, new Point2d(3, 0), 2)
           );
       }
     }
@@ -834,7 +834,7 @@ class HexCity implements Game {
   private workers: HexWorker[] = [];
   private constructor(tileset: TileMap, animations: TileMap) {
     this.map = new HexMap(tileset);
-    for (let i = 0; i < 5; i++)
+    for (let i = 0; i < 10; i++)
       this.workers.push(new HexWorker(0, 0, animations, this.map));
   }
   static async initialize() {

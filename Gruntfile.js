@@ -31,8 +31,11 @@ module.exports = function (grunt) {
       },
     },
     watch: {
-      files: ["client/*.ts", "heroku/server.ts"],
+      files: ["client/*.js"],
       tasks: ["default"],
+      options: {
+        spawn: false,
+      },
     },
     browserify: {
       dist: {
@@ -43,10 +46,9 @@ module.exports = function (grunt) {
       },
     },
   });
-  grunt.loadNpmTasks("grunt-ts");
   grunt.loadNpmTasks("grunt-contrib-watch");
   grunt.loadNpmTasks("grunt-contrib-concat");
   grunt.loadNpmTasks("grunt-contrib-uglify");
   grunt.loadNpmTasks("grunt-browserify");
-  grunt.registerTask("default", ["ts", "browserify", "uglify"]);
+  grunt.registerTask("default", ["browserify", "uglify"]);
 };

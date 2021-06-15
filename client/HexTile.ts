@@ -38,7 +38,7 @@ export interface HexTilePrices {
   leftDown?: HexTilePrice;
   leftUp?: HexTilePrice;
 }
-const ROAD_LIMIT = 1;
+const ROAD_LIMIT = 10;
 export class HexTile implements HexTilePrice {
   private neighbors: HexNeighbors = {};
   private visitedTime = 0;
@@ -59,7 +59,6 @@ export class HexTile implements HexTilePrice {
       this.cachedImage.width,
       this.cachedImage.height
     );
-    this.redraw();
   }
   private redraw() {
     this.cachedG.clear();
@@ -81,7 +80,15 @@ export class HexTile implements HexTilePrice {
     else this.visited *= 0.75;
     this.visitedTime = now;
     let visitedAfter = this.visited;
-    if (visitedBefore <= ROAD_LIMIT && visitedAfter > ROAD_LIMIT) this.redraw();
+    if (visitedBefore <= ROAD_LIMIT && visitedAfter > ROAD_LIMIT) {
+      this.redraw();
+      this.neighbors.down?.redraw();
+      this.neighbors.leftDown?.redraw();
+      this.neighbors.leftUp?.redraw();
+      this.neighbors.rightDown?.redraw();
+      this.neighbors.rightUp?.redraw();
+      this.neighbors.up?.redraw();
+    }
   }
   draw(ctx: MyGraphics, x: number, y: number) {
     ctx.drawImageScaled(
@@ -109,7 +116,6 @@ export class HexTile implements HexTilePrice {
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(0, 4), x, y);
-      n.redraw();
     }
   }
   drawRightUp(ctx: MyGraphics, x: number, y: number) {
@@ -128,7 +134,6 @@ export class HexTile implements HexTilePrice {
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(3, 4), x, y);
-      n.redraw();
     }
   }
   drawRightDown(ctx: MyGraphics, x: number, y: number) {
@@ -147,7 +152,6 @@ export class HexTile implements HexTilePrice {
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(2, 4), x, y);
-      n.redraw();
     }
   }
   drawDown(ctx: MyGraphics, x: number, y: number) {
@@ -166,7 +170,6 @@ export class HexTile implements HexTilePrice {
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(1, 4), x, y);
-      n.redraw();
     }
   }
   drawLeftDown(ctx: MyGraphics, x: number, y: number) {
@@ -185,7 +188,6 @@ export class HexTile implements HexTilePrice {
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(4, 4), x, y);
-      n.redraw();
     }
   }
   drawLeftUp(ctx: MyGraphics, x: number, y: number) {
@@ -204,7 +206,6 @@ export class HexTile implements HexTilePrice {
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(5, 4), x, y);
-      n.redraw();
     }
   }
   hasType(t: HexTileType) {
@@ -212,27 +213,51 @@ export class HexTile implements HexTilePrice {
   }
   setUpNeighbor(n: HexTile | undefined) {
     this.neighbors.up = n;
-    if (n) n.neighbors.down = this;
+    if (n) {
+      n.neighbors.down = this;
+      n.redraw();
+    }
+    this.redraw();
   }
   setRightUpNeighbor(n: HexTile | undefined) {
     this.neighbors.rightUp = n;
-    if (n) n.neighbors.leftDown = this;
+    if (n) {
+      n.neighbors.leftDown = this;
+      n.redraw();
+    }
+    this.redraw();
   }
   setRightDownNeighbor(n: HexTile | undefined) {
     this.neighbors.rightDown = n;
-    if (n) n.neighbors.leftUp = this;
+    if (n) {
+      n.neighbors.leftUp = this;
+      n.redraw();
+    }
+    this.redraw();
   }
   setDownNeighbor(n: HexTile | undefined) {
     this.neighbors.down = n;
-    if (n) n.neighbors.up = this;
+    if (n) {
+      n.neighbors.up = this;
+      n.redraw();
+    }
+    this.redraw();
   }
   setLeftDownNeighbor(n: HexTile | undefined) {
     this.neighbors.leftDown = n;
-    if (n) n.neighbors.rightUp = this;
+    if (n) {
+      n.neighbors.rightUp = this;
+      n.redraw();
+    }
+    this.redraw();
   }
   setLeftUpNeighbor(n: HexTile | undefined) {
     this.neighbors.leftUp = n;
-    if (n) n.neighbors.rightDown = this;
+    if (n) {
+      n.neighbors.rightDown = this;
+      n.redraw();
+    }
+    this.redraw();
   }
   getPrices(): HexTilePrices {
     return this.neighbors;
