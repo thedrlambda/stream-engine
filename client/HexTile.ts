@@ -42,6 +42,8 @@ export class HexTile implements HexTilePrice {
   private neighbors: HexNeighbors = {};
   private visitedTime = 0;
   private visited = 0;
+  private cachedImage: HTMLCanvasElement;
+  private cachedG: MyGraphics;
   constructor(
     public readonly x: number,
     public readonly z: number,
@@ -49,21 +51,37 @@ export class HexTile implements HexTilePrice {
     private tType: HexTileType,
     private t: Point2d,
     public readonly drag: number
-  ) {}
+  ) {
+    this.cachedImage = map.getBlankTile();
+    this.cachedG = new MyGraphics(
+      this.cachedImage,
+      this.cachedImage.width,
+      this.cachedImage.height
+    );
+    this.redraw();
+  }
+  private redraw() {
+    this.cachedG.clear();
+    this.cachedG.setZoom(1);
+    let x = 0;
+    let y = 0;
+    this.map.draw(this.cachedG, this.t, x, y);
+    /*this.drawUp(this.cachedG, x, y);
+    this.drawRightUp(this.cachedG, x, y);
+    this.drawRightDown(this.cachedG, x, y);
+    this.drawDown(this.cachedG, x, y);
+    this.drawLeftDown(this.cachedG, x, y);
+    this.drawLeftUp(this.cachedG, x, y);*/
+  }
   visit() {
     let now = Date.now();
     if (now - this.visitedTime < 60000) this.visited++;
     else this.visited *= 0.75;
     this.visitedTime = now;
+    this.redraw();
   }
   draw(ctx: MyGraphics, x: number, y: number) {
-    this.map.draw(ctx, this.t, x, y);
-    this.drawUp(ctx, x, y);
-    this.drawRightUp(ctx, x, y);
-    this.drawRightDown(ctx, x, y);
-    this.drawDown(ctx, x, y);
-    this.drawLeftDown(ctx, x, y);
-    this.drawLeftUp(ctx, x, y);
+    ctx.drawImage(this.cachedImage, x, y);
   }
   drawUp(ctx: MyGraphics, x: number, y: number) {
     let n = this.neighbors.up;

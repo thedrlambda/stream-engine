@@ -47,4 +47,10 @@ export class TileMap {
   getWidth() {
     return this.w;
   }
+  getBlankTile() {
+    let result = document.createElement("canvas");
+    result.width = this.tw;
+    result.height = this.th;
+    return result;
+  }
 }
