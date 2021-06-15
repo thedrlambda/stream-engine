@@ -38,6 +38,7 @@ export interface HexTilePrices {
   leftDown?: HexTilePrice;
   leftUp?: HexTilePrice;
 }
+const ROAD_LIMIT = 1;
 export class HexTile implements HexTilePrice {
   private neighbors: HexNeighbors = {};
   private visitedTime = 0;
@@ -66,23 +67,32 @@ export class HexTile implements HexTilePrice {
     let x = 0;
     let y = 0;
     this.map.draw(this.cachedG, this.t, x, y);
-    /*this.drawUp(this.cachedG, x, y);
+    this.drawUp(this.cachedG, x, y);
     this.drawRightUp(this.cachedG, x, y);
     this.drawRightDown(this.cachedG, x, y);
     this.drawDown(this.cachedG, x, y);
     this.drawLeftDown(this.cachedG, x, y);
-    this.drawLeftUp(this.cachedG, x, y);*/
+    this.drawLeftUp(this.cachedG, x, y);
   }
   visit() {
+    let visitedBefore = this.visited;
     let now = Date.now();
     if (now - this.visitedTime < 60000) this.visited++;
     else this.visited *= 0.75;
     this.visitedTime = now;
-    this.redraw();
+    let visitedAfter = this.visited;
+    if (visitedBefore <= ROAD_LIMIT && visitedAfter > ROAD_LIMIT) this.redraw();
   }
   draw(ctx: MyGraphics, x: number, y: number) {
-    ctx.drawImage(this.cachedImage, x, y);
+    ctx.drawImageScaled(
+      this.cachedImage,
+      x,
+      y,
+      this.cachedImage.width,
+      this.cachedImage.height
+    );
   }
+  // FIXME: unify all these
   drawUp(ctx: MyGraphics, x: number, y: number) {
     let n = this.neighbors.up;
     if (!n) return;
@@ -97,8 +107,10 @@ export class HexTile implements HexTilePrice {
     } else if (n.hasType(HexTileType.Sand))
       this.map.draw(ctx, new Point2d(4, 7), x, y);
 
-    if (this.visited > 0 && n.visited > 0)
+    if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(0, 4), x, y);
+      n.redraw();
+    }
   }
   drawRightUp(ctx: MyGraphics, x: number, y: number) {
     let n = this.neighbors.rightUp;
@@ -114,8 +126,10 @@ export class HexTile implements HexTilePrice {
     } else if (n.hasType(HexTileType.Sand))
       this.map.draw(ctx, new Point2d(2, 7), x, y);
 
-    if (this.visited > 0 && n.visited > 0)
+    if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(3, 4), x, y);
+      n.redraw();
+    }
   }
   drawRightDown(ctx: MyGraphics, x: number, y: number) {
     let n = this.neighbors.rightDown;
@@ -131,8 +145,10 @@ export class HexTile implements HexTilePrice {
     } else if (n.hasType(HexTileType.Sand))
       this.map.draw(ctx, new Point2d(3, 7), x, y);
 
-    if (this.visited > 0 && n.visited > 0)
+    if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(2, 4), x, y);
+      n.redraw();
+    }
   }
   drawDown(ctx: MyGraphics, x: number, y: number) {
     let n = this.neighbors.down;
@@ -148,8 +164,10 @@ export class HexTile implements HexTilePrice {
     } else if (n.hasType(HexTileType.Sand))
       this.map.draw(ctx, new Point2d(5, 7), x, y);
 
-    if (this.visited > 0 && n.visited > 0)
+    if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(1, 4), x, y);
+      n.redraw();
+    }
   }
   drawLeftDown(ctx: MyGraphics, x: number, y: number) {
     let n = this.neighbors.leftDown;
@@ -165,8 +183,10 @@ export class HexTile implements HexTilePrice {
     } else if (n.hasType(HexTileType.Sand))
       this.map.draw(ctx, new Point2d(1, 7), x, y);
 
-    if (this.visited > 0 && n.visited > 0)
+    if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(4, 4), x, y);
+      n.redraw();
+    }
   }
   drawLeftUp(ctx: MyGraphics, x: number, y: number) {
     let n = this.neighbors.leftUp;
@@ -182,8 +202,10 @@ export class HexTile implements HexTilePrice {
     } else if (n.hasType(HexTileType.Sand))
       this.map.draw(ctx, new Point2d(0, 7), x, y);
 
-    if (this.visited > 0 && n.visited > 0)
+    if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
       this.map.draw(ctx, new Point2d(5, 4), x, y);
+      n.redraw();
+    }
   }
   hasType(t: HexTileType) {
     return this.tType === t;
