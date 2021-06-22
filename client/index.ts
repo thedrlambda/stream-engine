@@ -1,6 +1,6 @@
 import { Character } from "./Character";
 import { CollidingThingy } from "./CollidingThingy";
-import { Entity } from "./Entity";
+import { Coin, Entity } from "./Entity";
 import { GameEntity } from "./GameEntity";
 import { GameObject } from "./GameObject";
 import { HexNeighbors, HexTile, HexTilePrice, HexTileType } from "./HexTile";
@@ -90,11 +90,12 @@ export let coins = new Coins(3);
 export let boltImage: TileMap;
 export let keyPressed: { [key: string]: boolean } = {};
 
-let fluffConfiguration: {
+type Fluff = {
   img: MyImage;
   hasSpace: (_: boolean[][], x: number, y: number) => boolean;
-  foreground?: boolean;
-}[];
+  foreground?: Depth;
+};
+let fluffConfiguration: Fluff[];
 let backgroundFluff: StaticObject[][] = [];
 let foregroundFluff: StaticObject[][] = [];
 let px = 0;
@@ -107,7 +108,6 @@ let lastClickTime = 0;
 let lastClick = "";
 let coinImage: TileMap;
 let gImg: HTMLCanvasElement;
-let canvasGraphics: MyGraphics; // FIXME: remove from global space
 
 let chunk: Tile[][][] = [];
 let chunkX = 0;
@@ -136,7 +136,7 @@ class Button {
     this.left = x - w / 2;
     this.top = y + (-3 / 4) * h;
   }
-  draw() {
+  draw(canvasGraphics: MyGraphics) {
     canvasGraphics.drawRect(this.left, this.top, this.w, this.h);
     canvasGraphics.drawTextCentered(this.text, this.x, this.y);
   }
@@ -184,7 +184,7 @@ class Menu implements Game {
       this.buttons.forEach((b) => b.actIfHit(x, y));
     });
   }
-  static async initialize() {
+  static async initialize(canvasGraphics: MyGraphics) {
     return new Menu([
       new Button(
         "Money Health",
@@ -193,7 +193,7 @@ class Menu implements Game {
         100,
         20,
         async () => {
-          game = await MoneyHealth.initialize();
+          game = await MoneyHealth.initialize(canvasGraphics);
         }
       ),
       new Button(
@@ -203,7 +203,7 @@ class Menu implements Game {
         100,
         20,
         async () => {
-          game = await JumpGuy.initialize();
+          game = await JumpGuy.initialize(canvasGraphics);
         }
       ),
       new Button(
@@ -218,10 +218,10 @@ class Menu implements Game {
       ),
     ]);
   }
-  draw(g: MyGraphics) {
+  draw(canvasGraphics: MyGraphics) {
     canvasGraphics.clear();
     canvasGraphics.setColor("teal");
-    this.buttons.forEach((b) => b.draw());
+    this.buttons.forEach((b) => b.draw(canvasGraphics));
   }
   update(dt: number) {}
   handleMouseUp() {
@@ -237,8 +237,8 @@ class Menu implements Game {
   handleKeyDown(key: string) {}
 }
 class MoneyHealth implements Game {
-  private constructor() {}
-  static async initialize() {
+  private constructor(private g: MyGraphics) {}
+  static async initialize(canvasGraphics: MyGraphics) {
     char_run_img = await MyImage.load(CHAR_RUN);
     char_walk_img = await MyImage.load(CHAR_WALK);
     char_idle_img = await MyImage.load(CHAR_IDLE);
@@ -263,53 +263,53 @@ class MoneyHealth implements Game {
         loadObject(
           "assets/objects/Willows/1.png",
           [`...`, `?..`, `?.?`, `?.?`, `##?`],
-          Depth.FOREGROUND
+          new Foreground()
         ),
         loadObject(
           "assets/objects/Willows/2.png",
           [`...`, `...`, `?.?`, `?.?`, `...`, `###`],
-          Depth.BACKGROUND
+          new Background()
         ),
         loadObject(
           "assets/objects/Willows/3.png",
           [`?...?`, `??..?`, `??..?`, `???..`, `??###`],
-          Depth.BACKGROUND
+          new Background()
         ),
-        loadObject("assets/objects/Bushes/1.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Bushes/2.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Bushes/3.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Bushes/4.png", [`.`, `#`], Depth.BACKGROUND),
+        loadObject("assets/objects/Bushes/1.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Bushes/2.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Bushes/3.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Bushes/4.png", [`.`, `#`], new Background()),
         loadObject(
           "assets/objects/Bushes/5.png",
           [`...`, `###`],
-          Depth.BACKGROUND
+          new Background()
         ),
-        loadObject("assets/objects/Bushes/6.png", [`.`, `#`], Depth.BACKGROUND),
+        loadObject("assets/objects/Bushes/6.png", [`.`, `#`], new Background()),
         loadObject(
           "assets/objects/Bushes/7.png",
           [`...`, `###`],
-          Depth.BACKGROUND
+          new Background()
         ),
         loadObject(
           "assets/objects/Bushes/8.png",
           [`...`, `###`],
-          Depth.BACKGROUND
+          new Background()
         ),
         loadObject(
           "assets/objects/Bushes/9.png",
           [`...`, `###`],
-          Depth.BACKGROUND
+          new Background()
         ),
-        loadObject("assets/objects/Grass/1.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/2.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/3.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/4.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/5.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/6.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/7.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/8.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/9.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/10.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/1.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/2.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/3.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/4.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/5.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/6.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/7.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/8.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/9.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/10.png", [`.`, `#`], new Foreground()),
       ])
     ).flat();
 
@@ -337,24 +337,12 @@ class MoneyHealth implements Game {
       0
     );
 
-    /*
-    for (let i = 0; i < MONSTERS; i++) {
-      let monster = await newMonster(
-        ~~((Math.random() * map[0].length) / MONSTERS) +
-          ((i * map[0].length) / MONSTERS) * TILE_SIZE +
-          16,
-        5 * TILE_SIZE
-      );
-      entities.push(monster);
-    }
-    */
-
     char = await newCharacter(1.5 * CHUNK_SIZE * TILE_SIZE + 16, 0 * TILE_SIZE);
     entities.push(char);
 
-    return new MoneyHealth();
+    return new MoneyHealth(canvasGraphics.createNewCanvasGraphics());
   }
-  draw(g: MyGraphics) {
+  draw(canvasGraphics: MyGraphics) {
     if (coins.value < 0) {
       canvasGraphics.clear();
       canvasGraphics.resetTranslate();
@@ -363,19 +351,19 @@ class MoneyHealth implements Game {
       canvasGraphics.drawTextCentered("Game Over!", 0, 0);
     } else {
       canvasGraphics.clear();
-      g.clear();
-      drawBackground(g);
-      char.setCamera(g);
-      drawBackgroundFluff(g);
-      drawMap(g);
-      drawObjects(g);
-      drawEntities(g);
-      drawForegroundFluff(g);
-      drawForeground(g);
+      this.g.clear();
+      drawBackground(this.g);
+      char.setCamera(this.g);
+      drawBackgroundFluff(this.g);
+      drawMap(this.g);
+      drawObjects(this.g);
+      drawEntities(this.g);
+      drawForegroundFluff(this.g);
+      drawForeground(this.g);
       profile.tick("Draw.SwappingBuffers");
-      g.resetTranslate();
+      this.g.resetTranslate();
       for (let i = 0; i < coins.value; i++)
-        coinImage.draw(g, new Point2d(0, 0), 3 * i, 0);
+        coinImage.draw(this.g, new Point2d(0, 0), 3 * i, 0);
       canvasGraphics.drawImage(gImg, 0, 0);
     }
   }
@@ -420,7 +408,8 @@ class JumpGuy implements Game {
     private player: JumpCharacter,
     jumpWorld: boolean[][],
     private timer: { value: number },
-    private signs: StaticObject[]
+    private signs: StaticObject[],
+    private g: MyGraphics
   ) {
     this.map = [];
     for (let y = 0; y < jumpWorld.length; y++) {
@@ -441,18 +430,16 @@ class JumpGuy implements Game {
         );
         if (candidates.length === 0) continue;
         let tree = candidates[~~(Math.random() * candidates.length)];
-        if (tree !== undefined) {
-          if (tree.foreground) {
-            signs.splice(0, 0, new StaticObject(tree.img, x, y));
-          } else {
-            this.backgroundFluff.push(new StaticObject(tree.img, x, y));
-          }
-        }
+        tree?.foreground?.place2(
+          signs,
+          this.backgroundFluff,
+          new StaticObject(tree.img, x, y)
+        );
       }
     }
     this.mapCollider = new JumpGameMapCollider(this.map);
   }
-  static async initialize() {
+  static async initialize(canvasGraphics: MyGraphics) {
     let char_run_img = await MyImage.load(JUMP_CHAR_RUN);
     let char_idle_img = await MyImage.load(JUMP_CHAR_IDLE);
     let char_jump_img = await MyImage.load(JUMP_CHAR_JUMP);
@@ -468,53 +455,53 @@ class JumpGuy implements Game {
         loadObject(
           "assets/objects/Willows/1.png",
           [`...`, `?..`, `?.?`, `?.?`, `##?`],
-          Depth.FOREGROUND
+          new Foreground()
         ),
         loadObject(
           "assets/objects/Willows/2.png",
           [`...`, `...`, `?.?`, `?.?`, `...`, `###`],
-          Depth.BACKGROUND
+          new Background()
         ),
         loadObject(
           "assets/objects/Willows/3.png",
           [`?...?`, `??..?`, `??..?`, `???..`, `??###`],
-          Depth.BACKGROUND
+          new Background()
         ),
-        loadObject("assets/objects/Bushes/1.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Bushes/2.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Bushes/3.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Bushes/4.png", [`.`, `#`], Depth.BACKGROUND),
+        loadObject("assets/objects/Bushes/1.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Bushes/2.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Bushes/3.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Bushes/4.png", [`.`, `#`], new Background()),
         loadObject(
           "assets/objects/Bushes/5.png",
           [`...`, `###`],
-          Depth.BACKGROUND
+          new Background()
         ),
-        loadObject("assets/objects/Bushes/6.png", [`.`, `#`], Depth.BACKGROUND),
+        loadObject("assets/objects/Bushes/6.png", [`.`, `#`], new Background()),
         loadObject(
           "assets/objects/Bushes/7.png",
           [`...`, `###`],
-          Depth.BACKGROUND
+          new Background()
         ),
         loadObject(
           "assets/objects/Bushes/8.png",
           [`...`, `###`],
-          Depth.BACKGROUND
+          new Background()
         ),
         loadObject(
           "assets/objects/Bushes/9.png",
           [`...`, `###`],
-          Depth.BACKGROUND
+          new Background()
         ),
-        loadObject("assets/objects/Grass/1.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/2.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/3.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/4.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/5.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/6.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/7.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/8.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/9.png", [`.`, `#`], Depth.FOREGROUND),
-        loadObject("assets/objects/Grass/10.png", [`.`, `#`], Depth.FOREGROUND),
+        loadObject("assets/objects/Grass/1.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/2.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/3.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/4.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/5.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/6.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/7.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/8.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/9.png", [`.`, `#`], new Foreground()),
+        loadObject("assets/objects/Grass/10.png", [`.`, `#`], new Foreground()),
       ])
     ).flat();
 
@@ -603,28 +590,34 @@ class JumpGuy implements Game {
       8
     );
 
-    return new JumpGuy(player, map, timer, signs);
+    return new JumpGuy(
+      player,
+      map,
+      timer,
+      signs,
+      canvasGraphics.createNewCanvasGraphics()
+    );
   }
-  draw(g: MyGraphics) {
-    g.clear();
-    g.setZoom(1);
-    this.player.setCameraLocation(g);
+  draw(canvasGraphics: MyGraphics) {
+    this.g.clear();
+    this.g.setZoom(1);
+    this.player.setCameraLocation(this.g);
     let c = Math.floor(
       255 - 230 * (this.player.getY() / (TILE_SIZE * this.map.length))
     );
-    g.setBackgroundColor(`rgb(${c}, ${c}, ${c})`);
-    this.backgroundFluff.forEach((s) => s.draw(g));
-    let startX = g.getLeftmostTile();
-    let endX = g.getRightmostTile();
+    this.g.setBackgroundColor(`rgb(${c}, ${c}, ${c})`);
+    this.backgroundFluff.forEach((s) => s.draw(this.g));
+    let startX = this.g.getLeftmostTile();
+    let endX = this.g.getRightmostTile();
     for (let y = 0; y < this.map.length; y++) {
       for (let x = startX; x < endX; x++) {
         this.mapCollider
           .tile_is_solid(x, y)
-          ?.draw(g, tile_to_world(x), tile_to_world(y));
+          ?.draw(this.g, tile_to_world(x), tile_to_world(y));
       }
     }
-    this.player.draw(g);
-    this.signs.forEach((s) => s.draw(g));
+    this.player.draw(this.g);
+    this.signs.forEach((s) => s.draw(this.g));
     this.player.setCameraZoom(canvasGraphics);
     canvasGraphics.setTranslate(0, 0);
     canvasGraphics.drawImageCentered(gImg, 0, 0);
@@ -843,7 +836,7 @@ class HexCity implements Game {
 
     return new HexCity(tileset, animations);
   }
-  draw(g: MyGraphics) {
+  draw(canvasGraphics: MyGraphics) {
     canvasGraphics.clear();
     this.map.draw(canvasGraphics);
     this.workers.forEach((w) => w.draw(canvasGraphics));
@@ -916,10 +909,41 @@ enum Axis {
   Y = 0,
 }
 
-// FIXME: Replace type code with classes
-enum Depth {
-  BACKGROUND,
-  FOREGROUND,
+interface Depth {
+  place(c: number, tree: Fluff, x: number, y: number): void;
+  place2(
+    signs: StaticObject[],
+    backgroundFluff: StaticObject[],
+    obj: StaticObject
+  ): void;
+}
+class Background implements Depth {
+  place(c: number, tree: Fluff, x: number, y: number) {
+    backgroundFluff[c].push(
+      new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
+    );
+  }
+  place2(
+    signs: StaticObject[],
+    backgroundFluff: StaticObject[],
+    obj: StaticObject
+  ) {
+    backgroundFluff.push(obj);
+  }
+}
+class Foreground implements Depth {
+  place(c: number, tree: Fluff, x: number, y: number) {
+    foregroundFluff[c].push(
+      new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
+    );
+  }
+  place2(
+    signs: StaticObject[],
+    backgroundFluff: StaticObject[],
+    obj: StaticObject
+  ) {
+    signs.splice(0, 0, obj);
+  }
 }
 
 function ajax(
@@ -1314,7 +1338,7 @@ function loadObject(filename: string, signature: string[], depth: Depth) {
       img,
       hasSpace: (map: boolean[][], x: number, y: number) =>
         Math.random() < 0.1 && collidesWith(signature, map, x, y),
-      foreground: depth === Depth.FOREGROUND,
+      foreground: depth,
     },
     {
       img: img.flipped(),
@@ -1326,7 +1350,7 @@ function loadObject(filename: string, signature: string[], depth: Depth) {
           x,
           y
         ),
-      foreground: depth === Depth.FOREGROUND,
+      foreground: depth,
     },
   ]);
 }
@@ -1347,7 +1371,7 @@ function spawnCoins(p: TilePosition) {
       (Math.random() - Math.random()) * 45,
       -75,
       PLAYER_LAYER,
-      true
+      new Coin()
     );
     entities.push(coin);
     colliders.push(coin);
@@ -1549,17 +1573,7 @@ function placeFluff(groundMap: boolean[][], c: number) {
       );
       if (candidates.length === 0) continue;
       let tree = candidates[~~(Math.random() * candidates.length)];
-      if (tree !== undefined) {
-        if (tree.foreground) {
-          foregroundFluff[c].push(
-            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
-          );
-        } else {
-          backgroundFluff[c].push(
-            new StaticObject(tree.img, x + chunkX + c * CHUNK_SIZE, y)
-          );
-        }
-      }
+      tree?.foreground?.place(c, tree, x, y);
     }
   }
 }
@@ -1655,14 +1669,9 @@ window.addEventListener("mouseup", (e) => {
 (async () => {
   let canvas = document.getElementById("main") as HTMLCanvasElement;
   let bounds = canvas.getBoundingClientRect();
+  let canvasGraphics = new MyGraphics(canvas, bounds.width, bounds.height);
 
-  canvasGraphics = new MyGraphics(canvas, bounds.width, bounds.height);
-  gImg = document.createElement("canvas");
-  gImg.width = bounds.width;
-  gImg.height = bounds.height;
-  let g = new MyGraphics(gImg, bounds.width, bounds.height);
+  game = await Menu.initialize(canvasGraphics);
 
-  game = await Menu.initialize();
-
-  loop(g);
+  loop(canvasGraphics);
 })();

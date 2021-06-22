@@ -1,4 +1,4 @@
-import { Entity } from "./Entity";
+import { Entity, NotCoin } from "./Entity";
 import { GameEntity } from "./GameEntity";
 import {
   boltImage,
@@ -30,7 +30,7 @@ function spawnBolt(x: number, y: number, left: boolean) {
     (left ? -1 : 1) * WALK_SPEED * 5,
     0,
     PLAYER_LAYER,
-    false
+    new NotCoin()
   );
   entities.push(bolt);
   colliders.push(bolt);

@@ -167,4 +167,11 @@ export class MyGraphics {
   getZoom() {
     return this.zoom;
   }
+  createNewCanvasGraphics() {
+    let gImg = document.createElement("canvas");
+    gImg.width = this.width;
+    gImg.height = this.height;
+    let g = new MyGraphics(gImg, this.width, this.height);
+    return g;
+  }
 }
