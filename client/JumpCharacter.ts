@@ -1,17 +1,15 @@
+import { CollidingThingy } from "./CollidingThingy";
 import { GameEntity } from "./GameEntity";
 import {
-  colliders,
   GRAVITY,
   JumpingAnimations,
   keyPressed,
   MapCollider,
   PLAYER_LAYER,
   setCookie,
-  tile_of_world,
   TILE_SIZE,
   TwoWayAnimation,
   WALK_SPEED,
-  worldObjects,
 } from "./index";
 import { AnimationThing } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
@@ -36,7 +34,7 @@ export class JumpCharacter implements GameEntity {
   ) {
     this.animation = idle.right;
   }
-  update(dt: number, mapCollider: MapCollider) {
+  update(dt: number, mapCollider: MapCollider, colliders: CollidingThingy[]) {
     // FIXME a bit too long
     let topPoint = mapCollider.point_is_solid(this.x, this.y - TILE_SIZE);
     if (topPoint !== undefined) {
@@ -145,13 +143,6 @@ export class JumpCharacter implements GameEntity {
       this.x + (this.facingRight ? 1 : -1) * this.baselineOffset,
       this.y, zoom
     );
-  }
-  act() {
-    let tx = tile_of_world(this.x);
-    let ty = tile_of_world(this.y - 5);
-    worldObjects[1]
-      .find((w) => w.getPosition().x === tx && w.getPosition().y === ty)
-      ?.activate();
   }
   setCameraLocation(g: MyGraphics, zoom: number) {
     g.setTranslate(this.x, this.y - 2 * TILE_SIZE, zoom);

@@ -1,18 +1,20 @@
 import { GameEntity } from "./GameEntity";
 import {
-  colliders,
   GRAVITY,
   JumpingAnimations,
   keyPressed,
-  MapCollider,
   PLAYER_LAYER,
-  power,
   tile_of_world,
   TILE_SIZE,
   TwoWayAnimation,
   WALK_SPEED,
-  worldObjects,
 } from "./index";
+import {
+  colliders,
+  MoneyHealthMapCollider,
+  power,
+  worldObjects,
+} from "./MoneyHealth";
 import { AnimationThing } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 
@@ -39,7 +41,7 @@ export class Character implements GameEntity {
     this.animation = idle.right;
     this.stamina = this.maxStamina;
   }
-  update(dt: number, mapCollider: MapCollider) {
+  update(dt: number, mapCollider: MoneyHealthMapCollider) {
     // FIXME a bit too long
     if (power) this.running = true;
 

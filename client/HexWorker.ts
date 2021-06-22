@@ -1,6 +1,6 @@
+import { aStarNode } from "./AStarNode";
+import { HexMap } from "./HexMap";
 import {
-  aStarNode,
-  HexMap,
   HEX_TILE_DEPTH,
   HEX_TILE_WIDTH,
   sign,

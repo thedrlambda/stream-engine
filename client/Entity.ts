@@ -1,6 +1,7 @@
 import { CollidingThingy } from "./CollidingThingy";
 import { GameEntity } from "./GameEntity";
-import { char, coins, GRAVITY, MapCollider, TILE_SIZE } from "./index";
+import { coins, GRAVITY, TILE_SIZE } from "./index";
+import { char, MoneyHealthMapCollider } from "./MoneyHealth";
 import { AnimationThing } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 import { Tile } from "./Tile";
@@ -87,7 +88,7 @@ export class Entity implements CollidingThingy, GameEntity {
   ) {
     this.animation = idle;
   }
-  update(dt: number, mapCollider: MapCollider) {
+  update(dt: number, mapCollider: MoneyHealthMapCollider) {
     this.updateHorizontalPosition(dt);
     this.horizontalCollisionDetection(mapCollider);
 
@@ -109,12 +110,15 @@ export class Entity implements CollidingThingy, GameEntity {
     this.x += dx;
   }
 
-  private verticalCollisionDetection(mapCollider: MapCollider, dy: number) {
+  private verticalCollisionDetection(
+    mapCollider: MoneyHealthMapCollider,
+    dy: number
+  ) {
     let basePoint = mapCollider.point_is_solid(this.x, this.y);
     this.coin.handleVerticalCollision(this, basePoint, dy);
   }
 
-  private horizontalCollisionDetection(mapCollider: MapCollider) {
+  private horizontalCollisionDetection(mapCollider: MoneyHealthMapCollider) {
     let leftPoint = mapCollider.point_is_solid(
       this.x - this.halfSize,
       this.y - this.halfSize

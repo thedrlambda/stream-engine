@@ -1,18 +1,20 @@
 import { Entity, NotCoin } from "./Entity";
 import { GameEntity } from "./GameEntity";
 import {
-  boltImage,
-  char,
-  colliders,
-  entities,
   GRAVITY,
-  MapCollider,
   MONSTER_LAYER,
   PLAYER_LAYER,
   TILE_SIZE,
   TwoWayAnimation,
   WALK_SPEED,
 } from "./index";
+import {
+  boltImage,
+  char,
+  colliders,
+  entities,
+  MoneyHealthMapCollider,
+} from "./MoneyHealth";
 import { FromBeginning, MyAnimation, StillTicker } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 import { Point2d } from "./Point2d";
@@ -55,7 +57,7 @@ export class Monster implements GameEntity {
   ) {
     this.animation = idle.right;
   }
-  update(dt: number, mapCollider: MapCollider) {
+  update(dt: number, mapCollider: MoneyHealthMapCollider) {
     this.velY += GRAVITY * dt;
     let dy = this.velY * dt;
     this.y += dy;

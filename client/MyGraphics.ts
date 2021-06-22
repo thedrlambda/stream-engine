@@ -1,6 +1,10 @@
 import { TILE_SIZE } from "./index";
 import { MyImage } from "./MyImage";
 
+export class Canvas {
+  constructor(public readonly img:CanvasImageSource, public readonly graphics: MyGraphics){}
+}
+
 export class MyGraphics {
   private ctx: CanvasRenderingContext2D;
   private offsetX: number = 0;
@@ -172,6 +176,6 @@ export class MyGraphics {
     gImg.width = this.width;
     gImg.height = this.height;
     let g = new MyGraphics(gImg, this.width, this.height);
-    return g;
+    return new Canvas(gImg, g);
   }
 }
