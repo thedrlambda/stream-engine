@@ -126,8 +126,8 @@ export class Entity implements CollidingThingy, GameEntity {
     this.coin.handleHorizontalCollision(leftPoint, rightPoint, this);
   }
 
-  draw(ctx: MyGraphics) {
-    this.animation.drawFromBaseLine(ctx, this.x, this.y);
+  draw(ctx: MyGraphics, zoom: number) {
+    this.animation.drawFromBaseLine(ctx, this.x, this.y, zoom);
   }
   isActive() {
     return this.active;

@@ -22,7 +22,6 @@ export class JumpCharacter implements GameEntity {
   private desiredJump: number = 0;
   private recovery: number = 0;
   private targetZoom: number = 2;
-  private zoom: number = 2;
   constructor(
     private x: number,
     private y: number,
@@ -140,11 +139,11 @@ export class JumpCharacter implements GameEntity {
 
     if (this.animation !== animationBefore) this.animation.reset();
   }
-  draw(ctx: MyGraphics) {
+  draw(ctx: MyGraphics, zoom: number) {
     this.animation.drawFromBaseLine(
       ctx,
       this.x + (this.facingRight ? 1 : -1) * this.baselineOffset,
-      this.y
+      this.y, zoom
     );
   }
   act() {
@@ -154,15 +153,15 @@ export class JumpCharacter implements GameEntity {
       .find((w) => w.getPosition().x === tx && w.getPosition().y === ty)
       ?.activate();
   }
-  setCameraLocation(g: MyGraphics) {
-    g.setTranslate(this.x, this.y - 2 * TILE_SIZE);
+  setCameraLocation(g: MyGraphics, zoom: number) {
+    g.setTranslate(this.x, this.y - 2 * TILE_SIZE, zoom);
   }
-  setCameraZoom(g: MyGraphics) {
+  setCameraZoom(zoom: number) {
     if (this.velY > 250) this.targetZoom += 0.01;
     else if (keyPressed["Shift"] && this.velY <= 0) this.targetZoom = 1.35;
     else if (this.recovery <= 0) this.targetZoom = 2;
-    this.zoom += (this.targetZoom - this.zoom) / 2;
-    g.setZoom(this.zoom);
+    zoom += (this.targetZoom - zoom) / 2;
+    return zoom;
   }
   getX() {
     return this.x;

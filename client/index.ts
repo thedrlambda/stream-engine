@@ -112,6 +112,7 @@ let gImg: HTMLCanvasElement;
 let chunk: Tile[][][] = [];
 let chunkX = 0;
 let chunkY = 0;
+let zoom = 2;
 
 interface Game {
   handleMouseUp(): void;
@@ -137,8 +138,8 @@ class Button {
     this.top = y + (-3 / 4) * h;
   }
   draw(canvasGraphics: MyGraphics) {
-    canvasGraphics.drawRect(this.left, this.top, this.w, this.h);
-    canvasGraphics.drawTextCentered(this.text, this.x, this.y);
+    canvasGraphics.drawRect(this.left, this.top, this.w, this.h, zoom);
+    canvasGraphics.drawTextCentered(this.text, this.x, this.y, zoom);
   }
   actIfHit(x: number, y: number) {
     if (
@@ -188,7 +189,7 @@ class Menu implements Game {
     return new Menu([
       new Button(
         "Money Health",
-        canvasGraphics.getVerticalCenter(),
+        canvasGraphics.getVerticalCenter(zoom),
         100,
         100,
         20,
@@ -198,7 +199,7 @@ class Menu implements Game {
       ),
       new Button(
         "Jump prince",
-        canvasGraphics.getVerticalCenter(),
+        canvasGraphics.getVerticalCenter(zoom),
         130,
         100,
         20,
@@ -208,7 +209,7 @@ class Menu implements Game {
       ),
       new Button(
         "Hex City",
-        canvasGraphics.getVerticalCenter(),
+        canvasGraphics.getVerticalCenter(zoom),
         160,
         100,
         20,
@@ -346,14 +347,14 @@ class MoneyHealth implements Game {
     if (coins.value < 0) {
       canvasGraphics.clear();
       canvasGraphics.resetTranslate();
-      canvasGraphics.drawImage(gImg, 0, 0);
-      canvasGraphics.setTranslate(0, 0);
-      canvasGraphics.drawTextCentered("Game Over!", 0, 0);
+      canvasGraphics.drawImage(gImg, 0, 0, zoom);
+      canvasGraphics.setTranslate(0, 0, zoom);
+      canvasGraphics.drawTextCentered("Game Over!", 0, 0, zoom);
     } else {
       canvasGraphics.clear();
       this.g.clear();
       drawBackground(this.g);
-      char.setCamera(this.g);
+      char.setCamera(this.g, zoom);
       drawBackgroundFluff(this.g);
       drawMap(this.g);
       drawObjects(this.g);
@@ -363,8 +364,8 @@ class MoneyHealth implements Game {
       profile.tick("Draw.SwappingBuffers");
       this.g.resetTranslate();
       for (let i = 0; i < coins.value; i++)
-        coinImage.draw(this.g, new Point2d(0, 0), 3 * i, 0);
-      canvasGraphics.drawImage(gImg, 0, 0);
+        coinImage.draw(this.g, new Point2d(0, 0), 3 * i, 0, zoom);
+      canvasGraphics.drawImage(gImg, 0, 0, zoom);
     }
   }
 
@@ -600,27 +601,26 @@ class JumpGuy implements Game {
   }
   draw(canvasGraphics: MyGraphics) {
     this.g.clear();
-    this.g.setZoom(1);
-    this.player.setCameraLocation(this.g);
+    this.player.setCameraLocation(this.g, zoom);
     let c = Math.floor(
       255 - 230 * (this.player.getY() / (TILE_SIZE * this.map.length))
     );
     this.g.setBackgroundColor(`rgb(${c}, ${c}, ${c})`);
-    this.backgroundFluff.forEach((s) => s.draw(this.g));
+    this.backgroundFluff.forEach((s) => s.draw(this.g, zoom));
     let startX = this.g.getLeftmostTile();
-    let endX = this.g.getRightmostTile();
+    let endX = this.g.getRightmostTile(1);
     for (let y = 0; y < this.map.length; y++) {
       for (let x = startX; x < endX; x++) {
         this.mapCollider
           .tile_is_solid(x, y)
-          ?.draw(this.g, tile_to_world(x), tile_to_world(y));
+          ?.draw(this.g, tile_to_world(x), tile_to_world(y), 1);
       }
     }
-    this.player.draw(this.g);
-    this.signs.forEach((s) => s.draw(this.g));
-    this.player.setCameraZoom(canvasGraphics);
-    canvasGraphics.setTranslate(0, 0);
-    canvasGraphics.drawImageCentered(gImg, 0, 0);
+    this.player.draw(this.g, zoom);
+    this.signs.forEach((s) => s.draw(this.g, zoom));
+    zoom = this.player.setCameraZoom(zoom);
+    canvasGraphics.setTranslate(0, 0, zoom);
+    canvasGraphics.drawImageCentered(gImg, 0, 0, zoom);
     if (this.timer.value >= 0) {
       canvasGraphics.setColor("white");
       let diff = Date.now() - this.timer.value;
@@ -728,7 +728,8 @@ export class HexMap {
         this.map[x][z]?.draw(
           canvasGraphics,
           worldXOfHexTile(x, z),
-          worldZOfHexTile(x, z)
+          worldZOfHexTile(x, z),
+          zoom
         );
       }
     }
@@ -839,7 +840,7 @@ class HexCity implements Game {
   draw(canvasGraphics: MyGraphics) {
     canvasGraphics.clear();
     this.map.draw(canvasGraphics);
-    this.workers.forEach((w) => w.draw(canvasGraphics));
+    this.workers.forEach((w) => w.draw(canvasGraphics, zoom));
   }
 
   update(dt: number) {
@@ -1228,12 +1229,12 @@ export function tile_is_solid(xTile: number, yTile: number) {
 }
 
 function drawLayer(ctx: MyGraphics, img: MyImage, x: number) {
-  ctx.setTranslate(0, 150);
+  ctx.setTranslate(0, 150, zoom);
   let imgWidth = img.width;
   let ix = (((x % imgWidth) + imgWidth) % imgWidth) - imgWidth;
-  ctx.drawImageScaled(img.src, ix, 0, imgWidth, img.height);
-  ctx.drawImageScaled(img.src, ix + imgWidth, 0, imgWidth, img.height);
-  ctx.drawImageScaled(img.src, ix - imgWidth, 0, imgWidth, img.height);
+  ctx.drawImageScaled(img.src, ix, 0, imgWidth, img.height, zoom);
+  ctx.drawImageScaled(img.src, ix + imgWidth, 0, imgWidth, img.height, zoom);
+  ctx.drawImageScaled(img.src, ix - imgWidth, 0, imgWidth, img.height, zoom);
 }
 
 function drawBackground(g: MyGraphics) {
@@ -1246,16 +1247,17 @@ function drawBackground(g: MyGraphics) {
 
 function drawBackgroundFluff(g: MyGraphics) {
   profile.tick("Draw.BackgroundFluff");
-  for (let c = 0; c < 3; c++) backgroundFluff[c].forEach((x) => x.draw(g));
+  for (let c = 0; c < 3; c++)
+    backgroundFluff[c].forEach((x) => x.draw(g, zoom));
 }
 
 function drawMap(g: MyGraphics) {
   profile.tick("Draw.Map");
   let startX = g.getLeftmostTile();
-  let endX = g.getRightmostTile();
+  let endX = g.getRightmostTile(zoom);
   for (let y = 0; y < chunk[0].length; y++)
     for (let x = startX; x < endX; x++) {
-      tile_is_solid(x, y)?.draw(g, tile_to_world(x), tile_to_world(y));
+      tile_is_solid(x, y)?.draw(g, tile_to_world(x), tile_to_world(y), zoom);
     }
 }
 
@@ -1270,18 +1272,19 @@ function drawForeground(g: MyGraphics) {
 function drawObjects(g: MyGraphics) {
   profile.tick("Draw.Objects");
   for (let c = 0; c < 3; c++) {
-    worldObjects[c].forEach((w) => w.draw(g));
+    worldObjects[c].forEach((w) => w.draw(g, zoom));
   }
 }
 
 function drawEntities(g: MyGraphics) {
   profile.tick("Draw.Entities");
-  entities.forEach((x) => x.draw(g));
+  entities.forEach((x) => x.draw(g, zoom));
 }
 
 function drawForegroundFluff(g: MyGraphics) {
   profile.tick("Draw.ForegroundFluff");
-  for (let c = 0; c < 3; c++) foregroundFluff[c].forEach((x) => x.draw(g));
+  for (let c = 0; c < 3; c++)
+    foregroundFluff[c].forEach((x) => x.draw(g, zoom));
 }
 
 function loop(g: MyGraphics) {
@@ -1654,10 +1657,7 @@ window.addEventListener("keyup", (e) => {
   handleKeyUp(new MappedKey(e.key));
 });
 window.addEventListener("mousemove", (e) => {
-  game.handleMouseMove(
-    e.offsetX / canvasGraphics.getZoom(),
-    e.offsetY / canvasGraphics.getZoom()
-  );
+  game.handleMouseMove(e.offsetX / zoom, e.offsetY / zoom);
 });
 window.addEventListener("mousedown", (e) => {
   game.handleMouseDown();

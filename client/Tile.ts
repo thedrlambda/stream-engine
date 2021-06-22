@@ -4,7 +4,7 @@ import { TileMap } from "./TileMap";
 
 export class Tile {
   constructor(private map: TileMap, private t: Point2d) {}
-  draw(ctx: MyGraphics, x: number, y: number) {
-    this.map.draw(ctx, this.t, x, y);
+  draw(ctx: MyGraphics, x: number, y: number, zoom: number) {
+    this.map.draw(ctx, this.t, x, y, zoom);
   }
 }

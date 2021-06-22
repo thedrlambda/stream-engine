@@ -133,11 +133,12 @@ export class Monster implements GameEntity {
 
     if (this.animation !== animationBefore) this.animation.reset();
   }
-  draw(ctx: MyGraphics) {
+  draw(ctx: MyGraphics, zoom: number) {
     this.animation.drawFromBaseLine(
       ctx,
       this.x + (this.facingRight ? 1 : -1) * this.baselineOffset,
-      this.y
+      this.y,
+      zoom
     );
   }
   isActive() {

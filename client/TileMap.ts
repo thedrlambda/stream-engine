@@ -14,7 +14,7 @@ export class TileMap {
     this.tw = ~~((img.width - margin) / w);
     this.th = ~~((img.height - margin) / h);
   }
-  draw(ctx: MyGraphics, t: Point2d, x: number, y: number) {
+  draw(ctx: MyGraphics, t: Point2d, x: number, y: number, zoom: number) {
     ctx.drawImageSubImage(
       this.img.src,
       t.x * this.tw + this.margin,
@@ -24,10 +24,17 @@ export class TileMap {
       x,
       y,
       this.tw - this.margin,
-      this.th - this.margin
+      this.th - this.margin,
+      zoom
     );
   }
-  drawFromBaseLine(ctx: MyGraphics, t: Point2d, x: number, y: number) {
+  drawFromBaseLine(
+    ctx: MyGraphics,
+    t: Point2d,
+    x: number,
+    y: number,
+    zoom: number
+  ) {
     ctx.drawImageSubImageFromBaseLine(
       this.img.src,
       t.x * this.tw + this.margin,
@@ -37,7 +44,8 @@ export class TileMap {
       x,
       y,
       this.tw - this.margin,
-      this.th - this.margin
+      this.th - this.margin,
+      zoom
     );
   }
   flip() {

@@ -62,10 +62,9 @@ export class HexTile implements HexTilePrice {
   }
   private redraw() {
     this.cachedG.clear();
-    this.cachedG.setZoom(1);
     let x = 0;
     let y = 0;
-    this.map.draw(this.cachedG, this.t, x, y);
+    this.map.draw(this.cachedG, this.t, x, y, 1);
     this.drawUp(this.cachedG, x, y);
     this.drawRightUp(this.cachedG, x, y);
     this.drawRightDown(this.cachedG, x, y);
@@ -90,13 +89,14 @@ export class HexTile implements HexTilePrice {
       this.neighbors.up?.redraw();
     }
   }
-  draw(ctx: MyGraphics, x: number, y: number) {
+  draw(ctx: MyGraphics, x: number, y: number, zoom: number) {
     ctx.drawImageScaled(
       this.cachedImage,
       x,
       y,
       this.cachedImage.width,
-      this.cachedImage.height
+      this.cachedImage.height,
+      zoom
     );
   }
   // FIXME: unify all these
@@ -106,16 +106,16 @@ export class HexTile implements HexTilePrice {
 
     if (this.tType === HexTileType.Grass) {
     } else if (n.hasType(HexTileType.Grass))
-      this.map.draw(ctx, new Point2d(4, 5), x, y);
+      this.map.draw(ctx, new Point2d(4, 5), x, y, 1);
     else if (this.tType === HexTileType.Swamp) {
     } else if (n.hasType(HexTileType.Swamp))
-      this.map.draw(ctx, new Point2d(4, 6), x, y);
+      this.map.draw(ctx, new Point2d(4, 6), x, y, 1);
     else if (this.tType === HexTileType.Sand) {
     } else if (n.hasType(HexTileType.Sand))
-      this.map.draw(ctx, new Point2d(4, 7), x, y);
+      this.map.draw(ctx, new Point2d(4, 7), x, y, 1);
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
-      this.map.draw(ctx, new Point2d(0, 4), x, y);
+      this.map.draw(ctx, new Point2d(0, 4), x, y, 1);
     }
   }
   drawRightUp(ctx: MyGraphics, x: number, y: number) {
@@ -124,16 +124,16 @@ export class HexTile implements HexTilePrice {
 
     if (this.tType === HexTileType.Grass) {
     } else if (n.hasType(HexTileType.Grass))
-      this.map.draw(ctx, new Point2d(2, 5), x, y);
+      this.map.draw(ctx, new Point2d(2, 5), x, y, 1);
     else if (this.tType === HexTileType.Swamp) {
     } else if (n.hasType(HexTileType.Swamp))
-      this.map.draw(ctx, new Point2d(2, 6), x, y);
+      this.map.draw(ctx, new Point2d(2, 6), x, y, 1);
     else if (this.tType === HexTileType.Sand) {
     } else if (n.hasType(HexTileType.Sand))
-      this.map.draw(ctx, new Point2d(2, 7), x, y);
+      this.map.draw(ctx, new Point2d(2, 7), x, y, 1);
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
-      this.map.draw(ctx, new Point2d(3, 4), x, y);
+      this.map.draw(ctx, new Point2d(3, 4), x, y, 1);
     }
   }
   drawRightDown(ctx: MyGraphics, x: number, y: number) {
@@ -142,16 +142,16 @@ export class HexTile implements HexTilePrice {
 
     if (this.tType === HexTileType.Grass) {
     } else if (n.hasType(HexTileType.Grass))
-      this.map.draw(ctx, new Point2d(3, 5), x, y);
+      this.map.draw(ctx, new Point2d(3, 5), x, y, 1);
     else if (this.tType === HexTileType.Swamp) {
     } else if (n.hasType(HexTileType.Swamp))
-      this.map.draw(ctx, new Point2d(3, 6), x, y);
+      this.map.draw(ctx, new Point2d(3, 6), x, y, 1);
     else if (this.tType === HexTileType.Sand) {
     } else if (n.hasType(HexTileType.Sand))
-      this.map.draw(ctx, new Point2d(3, 7), x, y);
+      this.map.draw(ctx, new Point2d(3, 7), x, y, 1);
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
-      this.map.draw(ctx, new Point2d(2, 4), x, y);
+      this.map.draw(ctx, new Point2d(2, 4), x, y, 1);
     }
   }
   drawDown(ctx: MyGraphics, x: number, y: number) {
@@ -160,16 +160,16 @@ export class HexTile implements HexTilePrice {
 
     if (this.tType === HexTileType.Grass) {
     } else if (n.hasType(HexTileType.Grass))
-      this.map.draw(ctx, new Point2d(5, 5), x, y);
+      this.map.draw(ctx, new Point2d(5, 5), x, y, 1);
     else if (this.tType === HexTileType.Swamp) {
     } else if (n.hasType(HexTileType.Swamp))
-      this.map.draw(ctx, new Point2d(5, 6), x, y);
+      this.map.draw(ctx, new Point2d(5, 6), x, y, 1);
     else if (this.tType === HexTileType.Sand) {
     } else if (n.hasType(HexTileType.Sand))
-      this.map.draw(ctx, new Point2d(5, 7), x, y);
+      this.map.draw(ctx, new Point2d(5, 7), x, y, 1);
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
-      this.map.draw(ctx, new Point2d(1, 4), x, y);
+      this.map.draw(ctx, new Point2d(1, 4), x, y, 1);
     }
   }
   drawLeftDown(ctx: MyGraphics, x: number, y: number) {
@@ -178,16 +178,16 @@ export class HexTile implements HexTilePrice {
 
     if (this.tType === HexTileType.Grass) {
     } else if (n.hasType(HexTileType.Grass))
-      this.map.draw(ctx, new Point2d(1, 5), x, y);
+      this.map.draw(ctx, new Point2d(1, 5), x, y, 1);
     else if (this.tType === HexTileType.Swamp) {
     } else if (n.hasType(HexTileType.Swamp))
-      this.map.draw(ctx, new Point2d(1, 6), x, y);
+      this.map.draw(ctx, new Point2d(1, 6), x, y, 1);
     else if (this.tType === HexTileType.Sand) {
     } else if (n.hasType(HexTileType.Sand))
-      this.map.draw(ctx, new Point2d(1, 7), x, y);
+      this.map.draw(ctx, new Point2d(1, 7), x, y, 1);
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
-      this.map.draw(ctx, new Point2d(4, 4), x, y);
+      this.map.draw(ctx, new Point2d(4, 4), x, y, 1);
     }
   }
   drawLeftUp(ctx: MyGraphics, x: number, y: number) {
@@ -196,16 +196,16 @@ export class HexTile implements HexTilePrice {
 
     if (this.tType === HexTileType.Grass) {
     } else if (n.hasType(HexTileType.Grass))
-      this.map.draw(ctx, new Point2d(0, 5), x, y);
+      this.map.draw(ctx, new Point2d(0, 5), x, y, 1);
     else if (this.tType === HexTileType.Swamp) {
     } else if (n.hasType(HexTileType.Swamp))
-      this.map.draw(ctx, new Point2d(0, 6), x, y);
+      this.map.draw(ctx, new Point2d(0, 6), x, y, 1);
     else if (this.tType === HexTileType.Sand) {
     } else if (n.hasType(HexTileType.Sand))
-      this.map.draw(ctx, new Point2d(0, 7), x, y);
+      this.map.draw(ctx, new Point2d(0, 7), x, y, 1);
 
     if (this.visited > ROAD_LIMIT && n.visited > ROAD_LIMIT) {
-      this.map.draw(ctx, new Point2d(5, 4), x, y);
+      this.map.draw(ctx, new Point2d(5, 4), x, y, 1);
     }
   }
   hasType(t: HexTileType) {

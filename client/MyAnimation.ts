@@ -9,8 +9,8 @@ interface AnimationActions<T> {
 
 export interface AnimationThing<T> {
   update(dt: number, self: T): void;
-  draw(ctx: MyGraphics, x: number, y: number): void;
-  drawFromBaseLine(ctx: MyGraphics, x: number, y: number): void;
+  draw(ctx: MyGraphics, x: number, y: number, zoom: number): void;
+  drawFromBaseLine(ctx: MyGraphics, x: number, y: number, zoom: number): void;
   reset(): void;
 }
 
@@ -292,15 +292,22 @@ export class MyAnimation<T> implements AnimationThing<T>, TickerHandler<T> {
   update(dt: number, self: T) {
     this.cursor = this.ticker.update(dt, self, this.cursor, this);
   }
-  draw(ctx: MyGraphics, x: number, y: number) {
-    this.map.draw(ctx, new Point2d(this.t.x + this.cursor, this.t.y), x, y);
+  draw(ctx: MyGraphics, x: number, y: number, zoom: number) {
+    this.map.draw(
+      ctx,
+      new Point2d(this.t.x + this.cursor, this.t.y),
+      x,
+      y,
+      zoom
+    );
   }
-  drawFromBaseLine(ctx: MyGraphics, x: number, y: number) {
+  drawFromBaseLine(ctx: MyGraphics, x: number, y: number, zoom: number) {
     this.map.drawFromBaseLine(
       ctx,
       new Point2d(this.t.x + this.cursor, this.t.y),
       x,
-      y
+      y,
+      zoom
     );
   }
   reset() {

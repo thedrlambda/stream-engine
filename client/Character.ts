@@ -153,11 +153,12 @@ export class Character implements GameEntity {
 
     if (this.animation !== animationBefore) this.animation.reset();
   }
-  draw(ctx: MyGraphics) {
+  draw(ctx: MyGraphics, zoom: number) {
     this.animation.drawFromBaseLine(
       ctx,
       this.x + (this.facingRight ? 1 : -1) * this.baselineOffset,
-      this.y
+      this.y,
+      zoom
     );
     // Draw stamina
     if (Number.isFinite(this.maxStamina)) {
@@ -166,10 +167,11 @@ export class Character implements GameEntity {
         this.x - TILE_SIZE / 2,
         this.y,
         (this.stamina / this.maxStamina) * TILE_SIZE,
-        6
+        6,
+        zoom
       );
       ctx.setColor("rgb(255, 255, 255,1)");
-      ctx.drawRect(this.x - TILE_SIZE / 2, this.y, TILE_SIZE, 6);
+      ctx.drawRect(this.x - TILE_SIZE / 2, this.y, TILE_SIZE, 6, zoom);
     }
   }
   act() {
@@ -179,8 +181,8 @@ export class Character implements GameEntity {
       .find((w) => w.getPosition().x === tx && w.getPosition().y === ty)
       ?.activate();
   }
-  setCamera(g: MyGraphics) {
-    g.setTranslate(this.x, this.y - 2 * TILE_SIZE);
+  setCamera(g: MyGraphics, zoom: number) {
+    g.setTranslate(this.x, this.y - 2 * TILE_SIZE, zoom);
   }
   getX() {
     return this.x;

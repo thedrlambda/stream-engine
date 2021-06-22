@@ -3,7 +3,6 @@ import { MyImage } from "./MyImage";
 
 export class MyGraphics {
   private ctx: CanvasRenderingContext2D;
-  private zoom: number = 2;
   private offsetX: number = 0;
   private offsetY: number = 0;
   constructor(
@@ -21,9 +20,6 @@ export class MyGraphics {
     this.ctx.strokeStyle = color;
     this.ctx.fillStyle = color;
   }
-  setZoom(z: number) {
-    this.zoom = z;
-  }
   setBackgroundColor(color: string) {
     let before = this.ctx.fillStyle;
     this.ctx.fillStyle = color;
@@ -37,27 +33,32 @@ export class MyGraphics {
     this.ctx.fillStyle = before;
     this.ctx.fillText(str, x, y);
   }
-  drawTextCentered(str: string, x: number, y: number) {
+  drawTextCentered(str: string, x: number, y: number, zoom: number) {
     this.ctx.font = "bold 30px Arial";
-    let w = this.ctx.measureText(str).width / this.zoom;
-    let tx = (x - w / 2 - this.offsetX) * this.zoom;
-    let ty = (y - this.offsetY) * this.zoom;
+    let w = this.ctx.measureText(str).width / zoom;
+    let tx = (x - w / 2 - this.offsetX) * zoom;
+    let ty = (y - this.offsetY) * zoom;
     this.drawText(str, tx, ty);
   }
-  drawImageFromBaseLine(img: MyImage, x: number, y: number) {
-    let tx = (x - img.width / 2 - this.offsetX) * this.zoom;
-    let ty = (y - img.height - this.offsetY) * this.zoom;
-    let tw = img.width * this.zoom;
-    let th = img.height * this.zoom;
+  drawImageFromBaseLine(img: MyImage, x: number, y: number, zoom: number) {
+    let tx = (x - img.width / 2 - this.offsetX) * zoom;
+    let ty = (y - img.height - this.offsetY) * zoom;
+    let tw = img.width * zoom;
+    let th = img.height * zoom;
     if (tx > this.width || ty > this.height || tx + tw < 0 || ty + th < 0)
       return;
     this.ctx.drawImage(img.src, tx, ty, tw, th);
   }
-  drawImageCentered(img: CanvasImageSource, x: number, y: number) {
-    let tx = (x - +img.width / 2 - this.offsetX) * this.zoom;
-    let ty = (y - +img.height / 2 - this.offsetY) * this.zoom;
-    let tw = +img.width * this.zoom;
-    let th = +img.height * this.zoom;
+  drawImageCentered(
+    img: CanvasImageSource,
+    x: number,
+    y: number,
+    zoom: number
+  ) {
+    let tx = (x - +img.width / 2 - this.offsetX) * zoom;
+    let ty = (y - +img.height / 2 - this.offsetY) * zoom;
+    let tw = +img.width * zoom;
+    let th = +img.height * zoom;
     if (tx > this.width || ty > this.height || tx + tw < 0 || ty + th < 0)
       return;
     this.ctx.drawImage(img, tx, ty, tw, th);
@@ -67,35 +68,36 @@ export class MyGraphics {
     x: number,
     y: number,
     w: number,
-    h: number
+    h: number,
+    zoom: number
   ) {
-    let tx = (x - this.offsetX) * this.zoom;
-    let ty = (y - this.offsetY) * this.zoom;
-    let tw = w * this.zoom;
-    let th = h * this.zoom;
+    let tx = (x - this.offsetX) * zoom;
+    let ty = (y - this.offsetY) * zoom;
+    let tw = w * zoom;
+    let th = h * zoom;
     if (tx > this.width || ty > this.height || tx + tw < 0 || ty + th < 0)
       return;
     this.ctx.drawImage(src, tx, ty, tw, th);
   }
-  drawImage(src: CanvasImageSource, x: number, y: number) {
-    let tx = (x - this.offsetX) * this.zoom;
-    let ty = (y - this.offsetY) * this.zoom;
+  drawImage(src: CanvasImageSource, x: number, y: number, zoom: number) {
+    let tx = (x - this.offsetX) * zoom;
+    let ty = (y - this.offsetY) * zoom;
     this.ctx.drawImage(src, tx, ty);
   }
-  drawRect(x: number, y: number, w: number, h: number) {
-    let tx = (x - this.offsetX) * this.zoom;
-    let ty = (y - this.offsetY) * this.zoom;
-    let tw = w * this.zoom;
-    let th = h * this.zoom;
+  drawRect(x: number, y: number, w: number, h: number, zoom: number) {
+    let tx = (x - this.offsetX) * zoom;
+    let ty = (y - this.offsetY) * zoom;
+    let tw = w * zoom;
+    let th = h * zoom;
     if (tx > this.width || ty > this.height || tx + tw < 0 || ty + th < 0)
       return;
     this.ctx.strokeRect(tx, ty, tw, th);
   }
-  fillRect(x: number, y: number, w: number, h: number) {
-    let tx = (x - this.offsetX) * this.zoom;
-    let ty = (y - this.offsetY) * this.zoom;
-    let tw = w * this.zoom;
-    let th = h * this.zoom;
+  fillRect(x: number, y: number, w: number, h: number, zoom: number) {
+    let tx = (x - this.offsetX) * zoom;
+    let ty = (y - this.offsetY) * zoom;
+    let tw = w * zoom;
+    let th = h * zoom;
     if (tx > this.width || ty > this.height || tx + tw < 0 || ty + th < 0)
       return;
     this.ctx.fillRect(tx, ty, tw, th);
@@ -109,7 +111,8 @@ export class MyGraphics {
     dx: number,
     dy: number,
     dw: number,
-    dh: number
+    dh: number,
+    zoom: number
   ) {
     this.ctx.drawImage(
       src,
@@ -117,10 +120,10 @@ export class MyGraphics {
       sy,
       sw,
       sh,
-      (dx - this.offsetX) * this.zoom,
-      (dy - this.offsetY) * this.zoom,
-      dw * this.zoom,
-      dh * this.zoom
+      (dx - this.offsetX) * zoom,
+      (dy - this.offsetY) * zoom,
+      dw * zoom,
+      dh * zoom
     );
   }
   drawImageSubImageFromBaseLine(
@@ -132,7 +135,8 @@ export class MyGraphics {
     dx: number,
     dy: number,
     dw: number,
-    dh: number
+    dh: number,
+    zoom: number
   ) {
     this.ctx.drawImage(
       src,
@@ -140,15 +144,15 @@ export class MyGraphics {
       sy,
       sw,
       sh,
-      (dx - sw / 2 - this.offsetX) * this.zoom,
-      (dy - sh - this.offsetY) * this.zoom,
-      dw * this.zoom,
-      dh * this.zoom
+      (dx - sw / 2 - this.offsetX) * zoom,
+      (dy - sh - this.offsetY) * zoom,
+      dw * zoom,
+      dh * zoom
     );
   }
-  setTranslate(x: number, y: number) {
-    this.offsetX = x - this.width / (2 * this.zoom);
-    this.offsetY = y - this.height / (2 * this.zoom);
+  setTranslate(x: number, y: number, zoom: number) {
+    this.offsetX = x - this.width / (2 * zoom);
+    this.offsetY = y - this.height / (2 * zoom);
   }
   resetTranslate() {
     this.offsetX = 0;
@@ -157,15 +161,11 @@ export class MyGraphics {
   getLeftmostTile() {
     return Math.floor(this.offsetX / TILE_SIZE);
   }
-  getRightmostTile() {
-    return Math.floor((this.offsetX + this.width / this.zoom) / TILE_SIZE) + 1;
+  getRightmostTile(zoom: number) {
+    return Math.floor((this.offsetX + this.width / zoom) / TILE_SIZE) + 1;
   }
-  getVerticalCenter() {
-    return this.width / this.zoom / 2;
-  }
-  // FIXME: Eliminate getter
-  getZoom() {
-    return this.zoom;
+  getVerticalCenter(zoom: number) {
+    return this.width / zoom / 2;
   }
   createNewCanvasGraphics() {
     let gImg = document.createElement("canvas");

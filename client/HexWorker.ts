@@ -58,13 +58,14 @@ export class HexWorker {
     );
     this.animation = this.down;
     this.path = this.map.pathFind(0, 0, 1, 1);
-    this.walkSpeed = Math.random()*0.05 - 0.025 + 0.4;
+    this.walkSpeed = Math.random() * 0.05 - 0.025 + 0.4;
   }
-  draw(ctx: MyGraphics) {
+  draw(ctx: MyGraphics, zoom: number) {
     this.animation.drawFromBaseLine(
       ctx,
       this.x + HEX_TILE_WIDTH / 2,
-      this.z + (3 * HEX_TILE_DEPTH) / 2 + 12
+      this.z + (3 * HEX_TILE_DEPTH) / 2 + 12,
+      zoom
     );
   }
   update(dt: number) {

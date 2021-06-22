@@ -19,8 +19,8 @@ export class Particle implements GameEntity {
     this.y += this.velY * dt;
     this.lifeTime -= dt;
   }
-  draw(g: MyGraphics) {
-    this.image.draw(g, new Point2d(0, 0), this.x, this.y);
+  draw(g: MyGraphics, zoom: number) {
+    this.image.draw(g, new Point2d(0, 0), this.x, this.y, zoom);
   }
   isActive() {
     return this.lifeTime > 0;

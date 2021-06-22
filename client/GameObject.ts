@@ -16,11 +16,12 @@ export class GameObject {
   update(dt: number) {
     this.animation.update(dt, this);
   }
-  draw(ctx: MyGraphics) {
+  draw(ctx: MyGraphics, zoom: number) {
     this.animation.draw(
       ctx,
       tile_to_world(this.pos.x) + this.baselineOffset,
-      tile_to_world(this.pos.y)
+      tile_to_world(this.pos.y),
+      zoom
     );
   }
   activate() {
