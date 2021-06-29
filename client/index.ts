@@ -1,22 +1,10 @@
-import { Character } from "./Character";
-import { CollidingThingy } from "./CollidingThingy";
 import { Depth } from "./Depth";
-import { Coin, Entity } from "./Entity";
-import { Fluff } from "./Fluff";
 import { Game } from "./Game";
-import { GameEntity } from "./GameEntity";
-import { GameObject } from "./GameObject";
-import { HexNeighbors, HexTile, HexTilePrice, HexTileType } from "./HexTile";
-import { HexWorker } from "./HexWorker";
-import { JumpCharacter } from "./JumpCharacter";
 import { Menu } from "./Menu";
-import { Monster } from "./Monster";
 import {
   FromBeginning,
   Left,
   MyAnimation,
-  PlayOnce,
-  Random,
   RegularTicker,
   Right,
   StillTicker,
@@ -24,14 +12,11 @@ import {
 } from "./MyAnimation";
 import { MyGraphics } from "./MyGraphics";
 import { MyImage } from "./MyImage";
-import { Particle } from "./Particle";
 import { Point2d } from "./Point2d";
 import { Profiler } from "./Profiler";
-import { Persistance, Region } from "./Region";
-import { StaticObject } from "./StaticObject";
 import { Tile } from "./Tile";
 import { TileMap } from "./TileMap";
-import { TilePosition } from "./TilePosition";
+
 export const PLAYER_LAYER = 1 << 0;
 export const MONSTER_LAYER = 1 << 1;
 
@@ -41,8 +26,8 @@ export const WALK_SPEED = 35;
 export const TILE_SIZE = 32;
 export const FPS = 30;
 export const SLEEP = 1000 / FPS;
-
 export const MONSTERS = 3;
+
 const KEY_CONFIG: { [key: string]: string } = {
   d: "ArrowRight",
   a: "ArrowLeft",
@@ -133,11 +118,6 @@ export function isGround(groundMap: boolean[][], x: number, y: number) {
   );
 }
 
-enum Axis {
-  X = 1,
-  Y = 0,
-}
-
 export function ajax(
   url: string,
   method: "GET" | "POST" | "PUT" = "GET",
@@ -223,7 +203,6 @@ export function twoWayStaticAnimation<T>(
   if (!facingRight) [left, right] = [right, left];
   return { left, right };
 }
-// TODO: Replace with twoWayAnimationTileMap?
 export function twoWayAnimation<T>(
   rightImg: MyImage,
   fileLength: number,
@@ -233,36 +212,14 @@ export function twoWayAnimation<T>(
   actions: { frameNumber: number; action: (_: T) => void }[]
 ): TwoWayAnimation<T> {
   let rightMap = new TileMap(rightImg, fileLength, 1, 0);
-  let right = new MyAnimation(
+  return twoWayAnimationTileMap(
     rightMap,
     new Point2d(offsetX, 0),
-    new RegularTicker(
-      new Right(
-        duration,
-        fileLength - offsetX,
-        new FromBeginning(),
-        new WrapAround(),
-        actions
-      )
-    )
+    duration,
+    fileLength - offsetX,
+    facingRight,
+    actions
   );
-  let leftImg = rightImg.flipped();
-  let leftMap = new TileMap(leftImg, fileLength, 1, 0);
-  let left = new MyAnimation(
-    leftMap,
-    new Point2d(offsetX, 0),
-    new RegularTicker(
-      new Left(
-        duration,
-        fileLength - offsetX,
-        new FromBeginning(),
-        new WrapAround(),
-        actions
-      )
-    )
-  );
-  if (!facingRight) [left, right] = [right, left];
-  return { left, right };
 }
 
 export function twoWayAnimationTileMap<T>(
@@ -390,6 +347,11 @@ export function loadObject(
   ]);
 }
 
+enum Axis {
+  X = 1,
+  Y = 0,
+}
+
 export function handleInterior(
   groundMap: boolean[][],
   x: number,
@@ -480,8 +442,7 @@ function mapKey(key: string) {
 }
 
 class MappedKey {
-  public readonly key: string;
-  constructor(key: string) {
+  constructor(public readonly key: string) {
     this.key = mapKey(key);
   }
 }

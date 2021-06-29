@@ -9,6 +9,7 @@ import {
   worldXOfHexTile,
   worldZOfHexTile,
 } from "./index";
+import { Item } from "./Item";
 import {
   AnimationThing,
   FromBeginning,
@@ -28,11 +29,15 @@ export class HexWorker {
   private animation: AnimationThing<HexWorker>;
   private path: aStarNode | undefined;
   private walkSpeed: number;
+  private carrying: Item | undefined;
+  private tx: number;
+  private tz: number;
   constructor(
     private x: number,
     private z: number,
     animations: TileMap,
-    private map: HexMap
+    private map: HexMap,
+    private items: TileMap
   ) {
     this.sideDown = twoWayAnimationTileMap(
       animations,
@@ -59,8 +64,21 @@ export class HexWorker {
     this.animation = this.down;
     this.path = this.map.pathFind(0, 0, 1, 1);
     this.walkSpeed = Math.random() * 0.05 - 0.025 + 0.4;
+    let r = ~~(Math.random() * 5);
+    if (r <= 3) this.carrying = new Item(items, r);
+    this.tx = x;
+    this.tz = x;
   }
   draw(ctx: MyGraphics, zoom: number) {
+    if (this.carrying !== undefined) {
+      this.carrying.draw(
+        ctx,
+        this.x + HEX_TILE_WIDTH / 2,
+        this.z + (3 * HEX_TILE_DEPTH) / 2 + 12,
+        zoom,
+        this.animation.getCursor()
+      );
+    }
     this.animation.drawFromBaseLine(
       ctx,
       this.x + HEX_TILE_WIDTH / 2,
@@ -79,10 +97,11 @@ export class HexWorker {
       this.x += (dx / n) * this.walkSpeed;
       this.z += (dz / n) * this.walkSpeed;
       if (sign(wx - this.x, 1) === 0 && sign(wz - this.z, 1) === 0) {
-        let x = this.path.x;
-        let z = this.path.z;
-        this.map.visit(x, z);
+        this.tx = this.path.x;
+        this.tz = this.path.z;
+        this.map.visit(this.tx, this.tz);
         this.path = this.path.prev;
+        /*
         while (this.path === undefined) {
           let tx, tz: number;
           do {
@@ -92,6 +111,7 @@ export class HexWorker {
           this.path = this.map.pathFind(x, z, tx, tz);
           if (this.path !== undefined) this.path = this.path.prev;
         }
+        */
       }
     }
 
@@ -107,5 +127,15 @@ export class HexWorker {
     }
 
     if (this.animation !== animationBefore) this.animation.reset();
+  }
+  isFree() {
+    return this.path === undefined;
+  }
+  distanceFrom(x: number, z: number) {
+    return Math.abs(this.tx - x) + Math.abs(this.tz - z);
+  }
+  goto(x: number, z: number) {
+    this.path = this.map.pathFind(this.tx, this.tz, x, z);
+    if (this.path !== undefined) this.path = this.path.prev;
   }
 }

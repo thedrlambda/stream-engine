@@ -1,5 +1,5 @@
 import { aStarNode, reversePath } from "./AStarNode";
-import { HexTile, HexTileType } from "./HexTile";
+import { Grass, HexTile, HexTileType, Sand } from "./HexTile";
 import { worldXOfHexTile, worldZOfHexTile } from "./index";
 import { MyGraphics } from "./MyGraphics";
 import { Point2d } from "./Point2d";
@@ -18,13 +18,13 @@ export class HexMap {
           this.setTile(
             x,
             z,
-            new HexTile(x, z, tileset, HexTileType.Grass, new Point2d(1, 0), 1)
+            new HexTile(x, z, tileset, new Grass(), new Point2d(1, 0), 1)
           );
         else
           this.setTile(
             x,
             z,
-            new HexTile(x, z, tileset, HexTileType.Sand, new Point2d(3, 0), 2)
+            new HexTile(x, z, tileset, new Sand(), new Point2d(3, 0), 2)
           );
       }
     }

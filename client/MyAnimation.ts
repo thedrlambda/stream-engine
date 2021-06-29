@@ -12,6 +12,7 @@ export interface AnimationThing<T> {
   draw(ctx: MyGraphics, x: number, y: number, zoom: number): void;
   drawFromBaseLine(ctx: MyGraphics, x: number, y: number, zoom: number): void;
   reset(): void;
+  getCursor(): number;
 }
 
 interface LoopingDir<T> {
@@ -315,5 +316,8 @@ export class MyAnimation<T> implements AnimationThing<T>, TickerHandler<T> {
   }
   setTicker(newTicker: Ticker<T>) {
     this.ticker = newTicker;
+  }
+  getCursor() {
+    return this.cursor;
   }
 }
